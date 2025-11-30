@@ -1,0 +1,46 @@
+{# Base template for all agent prompts #}
+You are {{ agent_name | default('an AI agent') }} in a multi-agent system.
+
+## Context Information
+{% if context %}
+### User Goal
+{{ context.meta.goal | default('No specific goal defined') }}
+
+### Current Status
+- Step: {{ context.runtime.current_step | default('Not started') }}
+- Progress: {{ context.runtime.progress_percentage | default(0) }}%
+
+### Recent History
+{% for log in context.history.action_log[-5:] %}
+- Step {{ log.step }}: {{ log.action }} ({{ log.status }})
+{% if log.result %}
+  Result: {{ log.result | truncate(100) }}
+{% endif %}
+{% endfor %}
+
+{% if context.runtime.interrupt_flags %}
+### Interrupt Flags
+{% for flag, value in context.runtime.interrupt_flags.items() %}
+- {{ flag }}: {{ value }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+### Available Tools
+{% if tools %}
+{% for tool_name, tool in tools.items() %}
+- **{{ tool_name }}**: {{ tool.description }}
+{% endfor %}
+{% else %}
+No tools available.
+{% endif %}
+
+---
+
+## Task Instructions
+{{ task_instructions | default('Please proceed with your assigned task.') }}
+
+---
+
+## Response Format
+{{ response_format | default('Please provide a clear and structured response.') }}

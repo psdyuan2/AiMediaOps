@@ -1,0 +1,19 @@
+sk-GSmYcdmyFpltmGptrOIsIHDrOAIRkLs6d6XuDOrj9UoWLS3C
+
+
+export ANTHROPIC_BASE_URL=https://api.moonshot.cn/anthropic
+export ANTHROPIC_AUTH_TOKEN=sk-GSmYcdmyFpltmGptrOIsIHDrOAIRkLs6d6XuDOrj9UoWLS3C
+export ANTHROPIC_MODEL=kimi-k2-thinking
+export ANTHROPIC_DEFAULT_OPUS_MODEL=kimi-k2-0905-preview
+export ANTHROPIC_DEFAULT_SONNET_MODEL=kimi-k2-thinking
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=kimi-k2-0905-preview
+export CLAUDE_CODE_SUBAGENT_MODEL=kimi-k2-0905-preview
+
+
+
+export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
+export ANTHROPIC_AUTH_TOKEN=sk-7b9efb9c2ed240dfbd97d8421706b2c7
+export API_TIMEOUT_MS=600000
+export ANTHROPIC_MODEL=deepseek-chat
+export ANTHROPIC_SMALL_FAST_MODEL=deepseek-chat
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1

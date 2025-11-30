@@ -1,0 +1,40 @@
+{
+  "id": "5fded529-f42f-4bbe-8df9-c77a20de22d0",
+  "timestamp": "2025-11-28T00:51:48.668457",
+  "summary": "Goal: Test loading context blocks\nCurrent Step: 0\nRecent Actions (1 total):\n  1. [TestAgent] Testing load functionality - ✓\n     Result: {'success': True}",
+  "keywords": [
+    "total):",
+    "current",
+    "testagent",
+    "loading",
+    "result:",
+    "context",
+    "actions",
+    "true",
+    "1.",
+    "step:",
+    "recent",
+    "testing",
+    "load",
+    "test",
+    "functionality",
+    "goal:",
+    "blocks",
+    "success':"
+  ],
+  "content": "Goal: Test loading context blocks\nCurrent Step: 0\nRecent Actions (1 total):\n  1. [TestAgent] Testing load functionality - ✓\n     Result: {'success': True}",
+  "relevance_score": 1.0,
+  "block_size_tokens": 77,
+  "file_path": "context_storage/blocks/2025-11-28_0051_test_load_context_blocks.json",
+  "metadata": {
+    "agent_type": "Test",
+    "context_id": "5a7b83d7-1bac-49ee-b54e-93a6aabbb834",
+    "goal": "Test loading context blocks",
+    "current_step_index": 0,
+    "total_steps": 0,
+    "progress_percentage": 0.0,
+    "interrupt_flags": {},
+    "is_completed": false
+  },
+  "created_at": "2025-11-28T00:51:48.668457"
+}

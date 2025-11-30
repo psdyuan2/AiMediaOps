@@ -1,0 +1,28 @@
+{
+  "id": "6c8c5027-60c6-4515-bcb2-6327c43646f8",
+  "timestamp": "2025-11-28T00:51:57.043136",
+  "summary": "Goal: Test directory listing 3\nCurrent Step: 0",
+  "keywords": [
+    "listing",
+    "current",
+    "step:",
+    "test",
+    "directory",
+    "goal:"
+  ],
+  "content": "Goal: Test directory listing 3\nCurrent Step: 0",
+  "relevance_score": 1.0,
+  "block_size_tokens": 23,
+  "file_path": "context_storage/blocks/2025-11-28_0051_test_directory_listing_3.json",
+  "metadata": {
+    "agent_type": "Test",
+    "context_id": "2871eded-caf2-4cb3-b8c8-028c59f47319",
+    "goal": "Test directory listing 3",
+    "current_step_index": 0,
+    "total_steps": 0,
+    "progress_percentage": 0.0,
+    "interrupt_flags": {},
+    "is_completed": false
+  },
+  "created_at": "2025-11-28T00:51:57.043136"
+}

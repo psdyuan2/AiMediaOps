@@ -1,0 +1,29 @@
+{
+  "id": "a5caf1f7-8c26-4ccd-8c37-bb4ee1d3dea0",
+  "timestamp": "2025-11-28T00:51:51.677562",
+  "summary": "Goal: Testing filename search functionality\nCurrent Step: 0",
+  "keywords": [
+    "filename",
+    "search",
+    "current",
+    "step:",
+    "testing",
+    "functionality",
+    "goal:"
+  ],
+  "content": "Goal: Testing filename search functionality\nCurrent Step: 0",
+  "relevance_score": 1.0,
+  "block_size_tokens": 29,
+  "file_path": "context_storage/blocks/2025-11-28_0051_filename_search_test.json",
+  "metadata": {
+    "agent_type": "Testing",
+    "context_id": "22e2e779-12b6-4e20-8741-a18984e28bc7",
+    "goal": "Testing filename search functionality",
+    "current_step_index": 0,
+    "total_steps": 0,
+    "progress_percentage": 0.0,
+    "interrupt_flags": {},
+    "is_completed": false
+  },
+  "created_at": "2025-11-28T00:51:51.677562"
+}
