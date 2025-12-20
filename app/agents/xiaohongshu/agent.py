@@ -21,8 +21,21 @@ import asyncio
 import base64
 import json
 import os
+import random
+from datetime import time, datetime
 from typing import Any, Dict, List, Optional, Union
-from pathlib import Path
+
+# 日志配置导入 - 使用统一的日志管理模块
+from app.core.logger import logger
+from app.utils.poster_creator import create_poster
+from app.utils.path_utils import (
+    ensure_user_task_dirs,
+    get_user_source_file_path,
+    get_user_images_path,
+    get_user_notes_file_path,
+    get_user_notes_path
+)
+from app.data.constants import POSTER_WORD_COUNT, DEFAULT_KNOWLEDGE_PATH, DEFAULT_IMAGE_PATH, DEFAULT_NOTES_PATH
 
 # MCP协议相关导入
 try:
@@ -31,7 +44,7 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
-    print("警告：mcp库未安装，XiaohongshuAgent功能受限")
+    logger.warning("mcp库未安装，XiaohongshuAgent功能受限")
 
 # Pydantic模型导入
 from pydantic import BaseModel, Field
@@ -42,213 +55,8 @@ from app.core.context import Context
 from app.core.llm import LLMService
 from app.core.prompts import PromptEngine, prompt_engine
 
-
-class MCPClient:
-    """
-    MCP客户端封装类 - 负责与小红书MCP服务通信
-
-    封装MCP协议细节，提供简洁的API供Agent调用。
-    基于test/client2.py中的最佳实践实现。
-    """
-
-    def __init__(self, server_url: str = "http://localhost:18060/mcp"):
-        """
-        初始化MCP客户端
-
-        Args:
-            server_url: MCP服务器URL，默认为本地18060端口的/mcp端点
-        """
-        self.server_url = server_url
-        self.session: Optional[ClientSession] = None
-        self._transport_context = None  # streamablehttp_client上下文管理器
-        self._transport = None  # (read_stream, write_stream, get_session_id)三元组
-        self.tools_info: Dict[str, Dict] = {}
-
-    async def connect(self) -> None:
-        """
-        连接到MCP服务器
-
-        建立传输层连接，执行握手协议，获取工具列表。
-        必须在调用任何工具前执行。
-
-        Raises:
-            ConnectionError: 连接失败时抛出
-        """
-        if not MCP_AVAILABLE:
-            raise ImportError("mcp库未安装，无法连接MCP服务器")
-
-        try:
-            # 1. 创建传输层上下文管理器
-            self._transport_context = streamablehttp_client(self.server_url)
-
-            # 2. 进入传输层上下文，获取流
-            self._transport = await self._transport_context.__aenter__()
-            read_stream, write_stream, get_session_id = self._transport
-
-            # 3. 创建MCP协议会话 (Client Session)
-            self.session = await ClientSession(read_stream, write_stream).__aenter__()
-
-            # 4. 执行握手协议 (Handshake) - 关键步骤！
-            init_result = await self.session.initialize()
-            print(f"✅ MCP连接成功，服务器版本: {init_result.protocolVersion}")
-
-            # 5. 获取工具列表 (Discovery)
-            tools_list = await self.session.list_tools()
-            self.tools_info = {
-                tool.name: {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "input_schema": tool.inputSchema
-                }
-                for tool in tools_list.tools
-            }
-            print(f"✅ 发现 {len(self.tools_info)} 个MCP工具")
-
-        except Exception as e:
-            # 清理资源
-            await self._close_resources()
-            raise ConnectionError(f"连接MCP服务器失败: {e}")
-
-    async def _close_resources(self):
-        """清理MCP资源"""
-        try:
-            # 1. 关闭MCP会话
-            if self.session:
-                await self.session.__aexit__(None, None, None)
-                self.session = None
-
-            # 2. 关闭传输层上下文管理器
-            if self._transport_context:
-                await self._transport_context.__aexit__(None, None, None)
-                self._transport_context = None
-                self._transport = None  # 三元组引用
-
-        except Exception:
-            # 忽略关闭过程中的错误
-            pass
-
-    async def close(self):
-        """关闭MCP连接"""
-        await self._close_resources()
-        print("✅ MCP连接已关闭")
-
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """
-        调用MCP工具
-
-        Args:
-            tool_name: 工具名称
-            arguments: 工具参数字典
-
-        Returns:
-            工具执行结果列表，每个元素是包含类型和内容的字典
-
-        Raises:
-            ValueError: 工具不存在或未连接时抛出
-            RuntimeError: 工具调用失败时抛出
-        """
-        if not self.session:
-            raise ValueError("MCP客户端未连接，请先调用connect()方法")
-
-        if tool_name not in self.tools_info:
-            available_tools = list(self.tools_info.keys())
-            raise ValueError(f"工具 '{tool_name}' 不存在。可用工具: {available_tools}")
-
-        try:
-            result = await self.session.call_tool(tool_name, arguments or {})
-
-            # 将结果转换为字典列表
-            results = []
-            if hasattr(result, 'content') and result.content:
-                for content in result.content:
-                    if hasattr(content, 'text'):
-                        results.append({"type": "text", "content": content.text})
-                    elif hasattr(content, 'data'):
-                        # 处理二进制数据（如图片）
-                        results.append({"type": "binary", "content": content.data})
-            return results
-
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            error_msg = str(e) if str(e) else "空错误消息"
-            raise RuntimeError(f"调用工具 '{tool_name}' 失败: {error_msg}\n详细错误:\n{error_details}")
-
-    async def check_login_status(self) -> Dict[str, Any]:
-        """
-        检查小红书登录状态
-
-        Returns:
-            包含登录状态信息的字典
-        """
-        results = await self.call_tool("check_login_status", {})
-
-        # 解析结果
-        status_info = {"is_logged_in": False, "message": "未知状态"}
-        for result in results:
-            if result["type"] == "text":
-                text = result["content"]
-                if "已登录" in text or "登录成功" in text:
-                    status_info["is_logged_in"] = True
-                    status_info["message"] = text
-                elif "未登录" in text or "需要登录" in text:
-                    status_info["is_logged_in"] = False
-                    status_info["message"] = text
-
-        return status_info
-
-    async def get_login_qrcode(self) -> Dict[str, Any]:
-        """
-        获取登录二维码
-
-        Returns:
-            包含二维码信息的字典，包括base64编码的图片数据和超时时间
-        """
-        results = await self.call_tool("get_login_qrcode", {})
-
-        qrcode_info = {"base64_image": "", "timeout": 180, "message": ""}
-        for result in results:
-            if result["type"] == "text":
-                # 解析文本结果中的信息
-                text = result["content"]
-                qrcode_info["message"] = text
-            elif result["type"] == "binary":
-                # 二进制数据为base64编码的图片
-                qrcode_info["base64_image"] = result["content"]
-
-        return qrcode_info
-
-    def save_qrcode_image(self, base64_data: str, filename: str = "login_qrcode.jpg") -> str:
-        """
-        保存二维码图片到文件
-
-        Args:
-            base64_data: base64编码的图片数据
-            filename: 保存的文件名
-
-        Returns:
-            保存的文件路径
-
-        Raises:
-            ValueError: base64数据无效时抛出
-        """
-        if not base64_data:
-            raise ValueError("base64图片数据为空")
-
-        # 确保目录存在
-        qrcode_dir = Path.cwd() / "qrcodes"
-        qrcode_dir.mkdir(exist_ok=True)
-
-        # 保存图片
-        filepath = qrcode_dir / filename
-        try:
-            # 解码base64数据
-            image_data = base64.b64decode(base64_data)
-            with open(filepath, "wb") as f:
-                f.write(image_data)
-            return str(filepath)
-        except Exception as e:
-            raise ValueError(f"保存二维码图片失败: {e}")
+# 导入MCP客户端
+from app.agents.xiaohongshu.MCP_client import MCPClient
 
 
 class XHSContent(BaseModel):
@@ -258,7 +66,8 @@ class XHSContent(BaseModel):
     用于LLM生成小红书帖子内容的结构化输出
     """
     title: str = Field(description="帖子标题，不超过20个中文字符")
-    content: str = Field(description="帖子正文内容，不超过1000字")
+    subtitle: str = Field(description="帖子副标题，不超过20个中文字符")
+    content: str = Field(description="帖子正文内容，不超过500字")
     tags: List[str] = Field(description="话题标签列表，最多5个", default_factory=list)
     image_suggestions: List[str] = Field(description="图片内容建议描述", default_factory=list)
 
@@ -268,7 +77,26 @@ class XHSContent(BaseModel):
         if len(self.title) > 20:
             return False
         # 内容长度不超过1000个字符
-        if len(self.content) > 1000:
+        if len(self.content) > 500:
+            return False
+        return True
+
+
+class XHSComment(BaseModel):
+    """
+    小红书评论生成模型
+
+    用于LLM生成小红书评论内容的结构化输出
+    """
+    content: str = Field(description="评论内容，不超过200字")
+    tone: str = Field(description="评论语气，如友好、专业、幽默、鼓励等", default="友好")
+    is_reply: bool = Field(description="是否为回复评论", default=False)
+    target_comment_id: Optional[str] = Field(description="回复的目标评论ID（如果是回复评论）", default=None)
+
+    def validate_content(self) -> bool:
+        """验证评论内容是否符合小红书要求"""
+        # 评论内容长度不超过200个字符
+        if len(self.content) > 200:
             return False
         return True
 
@@ -289,10 +117,18 @@ class XiaohongshuAgent(BaseAgent):
     """
 
     def __init__(
-        self,
-        context: Context,
-        llm: LLMService,
-        mcp_server_url: str = "http://localhost:18060/mcp"
+            self,
+            context: Context,
+            llm: LLMService,
+            user_name: str,
+            user_id: str,
+            task_id: str,
+            user_query: str=None,
+            user_topic: str=None,
+            user_style: str=None,
+            user_target_audience: str=None,
+            knowledge_base_path: str = DEFAULT_KNOWLEDGE_PATH,
+            mcp_server_url: str = "http://localhost:18060/mcp"
     ) -> None:
         """
         初始化小红书智能体
@@ -307,13 +143,24 @@ class XiaohongshuAgent(BaseAgent):
         # 初始化MCP客户端
         self.mcp_client = MCPClient(mcp_server_url)
         self.is_connected = False
-
+        self.user_name = user_name
+        self.user_id = user_id
+        self.task_id = task_id
+        self.knowledge_base_path = knowledge_base_path
+        self.user_query = user_query
+        self.user_topic = user_topic
+        self.user_style = user_style
+        self.user_target_audience = user_target_audience
         # 登录状态
         self.is_logged_in = False
         self.login_retry_count = 0
         self.max_login_retries = 3
 
-        print(f"✅ 小红书智能体初始化完成，MCP服务器: {mcp_server_url}")
+        # 初始化用户任务目录
+        if not ensure_user_task_dirs(self.user_id):
+            logger.warning(f"用户 {self.user_id} 任务目录初始化失败，某些功能可能受影响")
+
+        logger.info(f"小红书智能体初始化完成，MCP服务器: {mcp_server_url}")
 
     async def ensure_connected(self) -> None:
         """
@@ -328,7 +175,7 @@ class XiaohongshuAgent(BaseAgent):
             try:
                 await self.mcp_client.connect()
                 self.is_connected = True
-                print("✅ MCP连接已建立")
+                logger.info("MCP连接已建立")
             except Exception as e:
                 raise ConnectionError(f"建立MCP连接失败: {e}")
 
@@ -353,55 +200,55 @@ class XiaohongshuAgent(BaseAgent):
             status = await self.mcp_client.check_login_status()
             if status.get("is_logged_in", False):
                 self.is_logged_in = True
-                print("✅ 小红书已登录")
+                logger.info("小红书已登录")
                 return True
         except Exception as e:
-            print(f"⚠️ 检查登录状态失败: {e}")
+            logger.warning(f"检查登录状态失败: {e}")
 
         # 未登录，开始登录流程
-        print("🔑 小红书未登录，开始登录流程...")
+        logger.info("小红书未登录，开始登录流程...")
 
         while self.login_retry_count < self.max_login_retries:
             try:
                 # 获取登录二维码
-                print("📱 正在获取登录二维码...")
+                logger.info("正在获取登录二维码...")
                 qrcode_info = await self.mcp_client.get_login_qrcode()
 
                 # 保存二维码图片
                 if qrcode_info.get("base64_image"):
                     filepath = self.mcp_client.save_qrcode_image(qrcode_info["base64_image"])
-                    print(f"📷 二维码已保存至: {filepath}")
-                    print("📱 请使用小红书App扫描二维码登录")
+                    logger.info(f"二维码已保存至: {filepath}")
+                    logger.info("请使用小红书App扫描二维码登录")
                 else:
-                    print("⚠️ 未获取到二维码图片，请检查MCP服务状态")
+                    logger.warning("未获取到二维码图片，请检查MCP服务状态")
 
                 # 等待用户扫码确认
-                print("⏳ 请扫码完成后输入 'y' 并按回车键确认...")
+                logger.info("请扫码完成后输入 'y' 并按回车键确认...")
                 user_input = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: input(">> ")
                 )
 
                 if user_input.strip().lower() != 'y':
-                    print("❌ 输入非 'y'，登录流程取消")
+                    logger.warning("输入非 'y'，登录流程取消")
                     return False
 
                 # 检查登录状态
-                print("🔍 正在验证登录状态...")
+                logger.info("正在验证登录状态...")
                 status = await self.mcp_client.check_login_status()
 
                 if status.get("is_logged_in", False):
                     self.is_logged_in = True
-                    print("✅ 小红书登录成功！")
+                    logger.success("小红书登录成功！")
                     return True
                 else:
-                    print("❌ 登录失败，请重新扫码")
+                    logger.warning("登录失败，请重新扫码")
                     self.login_retry_count += 1
-                    print(f"🔄 重试次数: {self.login_retry_count}/{self.max_login_retries}")
+                    logger.info(f"重试次数: {self.login_retry_count}/{self.max_login_retries}")
 
             except Exception as e:
-                print(f"❌ 登录过程中出错: {e}")
+                logger.error(f"登录过程中出错: {e}")
                 self.login_retry_count += 1
-                print(f"🔄 重试次数: {self.login_retry_count}/{self.max_login_retries}")
+                logger.info(f"重试次数: {self.login_retry_count}/{self.max_login_retries}")
 
         # 达到最大重试次数
         raise RuntimeError(f"小红书登录失败，已达最大重试次数 ({self.max_login_retries})")
@@ -493,9 +340,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             搜索结果列表
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
-
         arguments = {"keyword": keyword}
         if filters:
             arguments["filters"] = filters
@@ -553,9 +397,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             评论结果信息
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
-
         arguments = {
             "feed_id": feed_id,
             "content": content,
@@ -637,9 +478,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             笔记详情信息字典
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
-
         arguments = {
             "feed_id": feed_id,
             "xsec_token": xsec_token
@@ -832,9 +670,12 @@ class XiaohongshuAgent(BaseAgent):
     async def generate_xhs_content(
         self,
         topic: str,
-        style: str = "生活分享",
-        target_audience: str = "年轻人",
-        max_tags: int = 3
+        style: str = None,
+        target_audience: str = None,
+        max_tags: int = 3,
+        user_query: str = None,
+        knowledge: str = None,
+        previous_notes_title: Optional[List[str]] = None
     ) -> XHSContent:
         """
         使用LLM生成小红书帖子内容
@@ -844,6 +685,7 @@ class XiaohongshuAgent(BaseAgent):
             style: 内容风格，如"生活分享"、"美食教程"、"旅行日记"等
             target_audience: 目标受众，如"年轻人"、"宝妈"、"学生"等
             max_tags: 最多生成的话题标签数量
+            previous_notes_title: 之前发布的笔记标题列表，用于避免内容重复
 
         Returns:
             XHSContent对象，包含生成的标题、内容、标签等
@@ -852,6 +694,7 @@ class XiaohongshuAgent(BaseAgent):
             RuntimeError: LLM生成失败时抛出
         """
         try:
+            previous_notes_title = previous_notes_title or []
             # 使用LLM生成结构化内容
             content = await self.generate_with_prompt(
                 template_name="xhs_content_generation",
@@ -860,23 +703,175 @@ class XiaohongshuAgent(BaseAgent):
                 topic=topic,
                 style=style,
                 target_audience=target_audience,
-                max_tags=max_tags
+                max_tags=max_tags,
+                user_query=user_query,
+                knowledge=knowledge,
+                previous_notes_title=previous_notes_title
             )
 
             # 验证生成的内容
             if not content.validate_content():
-                print("⚠️ 生成的内容可能超出小红书限制，请人工检查")
+                logger.warning("生成的内容可能超出小红书限制，请人工检查")
 
+            # 根据生成内容生成图片
+            poster_data = {
+                "title": content.title,
+                "subtitle": content.subtitle,
+                "content": content.content[:POSTER_WORD_COUNT],
+                "note": 'defult'
+            }
+            image_path = await create_poster(data=poster_data, task_id='test2')
+            content = content.__dict__
+            content["image_path"] = image_path
             return content
 
         except Exception as e:
             raise RuntimeError(f"生成小红书内容失败: {e}")
-    async def get_own_notes(self):
+
+    async def generate_comment(
+        self,
+        note_content: str,
+        comments: List[Dict[str, Any]],
+        tone: Optional[str] = None,
+        is_reply: bool = True,
+        target_comment_id: Optional[str] = None
+    ) -> XHSComment:
         """
-        获取该账号自己的笔记信息
+        根据笔记内容和现有评论生成小红书评论
+
+        Args:
+            note_content: 笔记正文内容
+            comments: 现有评论列表，每个评论为字典格式，至少包含'content'字段
+            tone: 期望的评论语气，如友好、专业、幽默、鼓励等（可选）
+            is_reply: 是否为回复评论，默认为True（如果有现有评论则回复，无评论则置为False）
+            target_comment_id: 回复的目标评论ID（如果是回复评论）
+
+        Returns:
+            XHSComment对象，包含生成的评论内容、语气等信息
+
+        Raises:
+            RuntimeError: LLM生成失败时抛出
+        """
+        # 如果评论列表为空，则不能是回复评论
+        if not comments:
+            is_reply = False
+            target_comment_id = None
+            logger.debug("评论列表为空，将生成普通评论（非回复）")
+
+        try:
+            # 使用LLM生成结构化评论
+            comment = await self.generate_with_prompt(
+                template_name="xhs_comment_generation",
+                response_model=XHSComment,
+                system_prompt="你是一个小红书社区运营专家，擅长生成自然、友好、有价值的评论。",
+                note_content=note_content,
+                comments=comments,
+                tone=tone,
+                is_reply=is_reply,
+                target_comment_id=target_comment_id
+            )
+
+            # 验证生成的评论
+            if not comment.validate_content():
+                logger.warning("生成的评论可能超出小红书限制，请人工检查")
+
+            logger.info(f"小红书评论生成成功: {comment.content[:50]}...")
+            return comment
+
+        except Exception as e:
+            raise RuntimeError(f"生成小红书评论失败: {e}")
+
+    async def get_own_notes(self, note_title, notes_num=1):
+        """
+        搜索自己发布过的某一篇笔记
         :return:
         """
-        # 搜索自己的名称
+        # 搜索自己
+        # 用id和用户昵称搜索笔记
+        notes_info = await self.search_feeds(keyword=str(self.user_name) + ' '+ str(note_title))
+        # 获取user_info当中的第一个且nick_name和用户一致的笔记
+        notes_content_list = []
+        if notes_info:
+            for i in range(notes_num):
+                try:
+                    type_text = notes_info[0]
+                    if type_text.get('type') == 'text':
+                        notes_content = type_text['content']
+                        note_info = json.loads(notes_content)['feeds'][i]
+                        xsecToken, id = note_info["xsecToken"], note_info["id"]
+                        # 搜索该内容的用户信息
+                        user_info_ori = await self.get_feed_detail(feed_id=id, xsec_token=xsecToken)
+                        message = json.loads(user_info_ori['message'])
+                        if message:
+                            logger.debug(message)
+                            notes_content_list.append(message)
+                except Exception as e:
+                    logger.warning(e)
+
+                logger.info(f"共获取到{notes_num}个笔记")
+            return notes_content_list
+        logger.warning(f"未获取到有效笔记")
+        return []
+
+
+
+    async def get_n_last_notes_title(self, n=3):
+        """
+        根据user_id，从notes中获取历史最近n个笔记记录的title字段，并以list输出
+
+        Args:
+            n: 需要获取的笔记数量，默认为3
+
+        Returns:
+            list: 包含最近n个笔记标题的列表，按时间从新到旧排序
+        """
+        # 构建笔记文件路径
+        notes_file = get_user_notes_file_path(self.user_id)
+
+        # 检查文件是否存在
+        if not os.path.exists(notes_file):
+            logger.warning(f"笔记文件不存在: {notes_file}")
+            return []
+
+        notes = []
+        try:
+            with open(notes_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        note_data = json.loads(line)
+                        # 确保有create_time字段，用于排序
+                        if 'create_time' in note_data and 'title' in note_data:
+                            notes.append(note_data)
+                        else:
+                            logger.debug(f"笔记数据缺少必要字段: {note_data}")
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"解析JSON行失败: {line}, 错误: {e}")
+                        continue
+
+            # 按create_time降序排序（最新的在前）
+            # 使用datetime对象进行精确排序，如果解析失败则回退到字符串排序
+            def get_sort_key(note):
+                create_time_str = note.get('create_time', '')
+                try:
+                    # 尝试解析为datetime对象
+                    return datetime.strptime(create_time_str, '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    # 解析失败，使用原始字符串
+                    return create_time_str
+
+            notes.sort(key=get_sort_key, reverse=True)
+
+            # 获取前n个笔记的title
+            titles = [note['title'] for note in notes[:n] if 'title' in note]
+            logger.info(f"成功获取用户 {self.user_id} 最近 {len(titles)} 个笔记标题")
+            return titles
+
+        except Exception as e:
+            logger.error(f"读取笔记文件失败: {e}")
+            return []
 
     async def run(self) -> Any:
         """
@@ -895,26 +890,87 @@ class XiaohongshuAgent(BaseAgent):
             RuntimeError: 执行失败时抛出
         """
         try:
-            print("🚀 小红书智能体开始执行...")
+            logger.info("小红书智能体开始执行...")
 
             # 1. 建立MCP连接
-            await self.ensure_connected()
+            # await self.ensure_connected()
 
             # 2. 确保登录状态
-            logged_in = await self.ensure_logged_in()
-            if not logged_in:
-                return {"success": False, "message": "小红书登录失败"}
+            # logged_in = await self.ensure_logged_in()
+            # if not logged_in:
+            #     return {"success": False, "message": "小红书登录失败"}
+
             # TO DO: 构建基于LLM的自动运维流程
             # 按照固定模式完成小红书运维任务
             # 检查用户信息，获取用户主页信息
-            user_info = self.user_profile()
-            # 3. 检查上下文中的任务
-            # 这里可以根据context.blackboard中的任务信息执行相应操作
-            # 例如：发布内容、搜索、评论等
 
-            print("✅ 小红书智能体执行完成")
+            previous_notes_title = await self.get_n_last_notes_title(3)
+
+            # 获取自己过去n篇笔记的内容和评论，并在评论区补充评论
+            for note_title in previous_notes_title:
+                await asyncio.sleep(random.randint(5,20))
+                notes_info = await self.get_own_notes(note_title)
+                # 获取评论信息
+                note_info = notes_info[0]
+                comments = note_info['data']['comments']['list']
+                note_content = note_info['data']['note']['desc']
+                note_id, xsecToken = note_info['data']['note']['noteId'], note_info['data']['note']['xsecToken']
+                logger.debug(f"获取到的id和token：{note_id}, {xsecToken}")
+                # 评论该笔记
+                new_comments_obj = await self.generate_comment(note_content=note_content, comments=comments)
+                new_comments = new_comments_obj.content
+
+                await self.post_comment(feed_id=note_id, content=new_comments, xsec_token=xsecToken)
+                logger.info(f"发表评论{new_comments[:50]}成功")
+
+            # 根据知识库，发布一篇笔记
+            ## 获取知识库中的知识生成笔记内容
+            source_file_path = get_user_source_file_path(self.user_id)
+            with open(source_file_path, 'r') as f:
+                knowledge_text = f.read()
+            res = await self.generate_xhs_content(
+                topic=self.user_topic,
+                style=self.user_style,
+                target_audience=self.user_target_audience,
+                max_tags=3,
+                knowledge=knowledge_text,
+                user_query=self.user_query,
+                previous_notes_title=previous_notes_title
+            )
+            logger.info(f"生成的小红书内容: {res}")
+
+            ## 生成图片
+            generate_image_path = await create_poster(data=res, task_id=self.task_id, output_dir=get_user_images_path(self.user_id))
+            logger.info(f"根据生成内容生成小红书海报图片：{generate_image_path}")
+
+            ## 发表内容
+            await self.publish_content(
+                title=res.get('title'),
+                content=res.get('content'),
+                tags=res.get('tags'),
+                images=[generate_image_path]
+            )
+            logger.info(f"小红书笔记发布完成")
+
+            ## 保存笔记的title
+            notes_file_path = get_user_notes_file_path(self.user_id)
+            with open(notes_file_path, 'a') as f:
+                res['create_time'] = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+                res['task_id'] = self.task_id
+                f.write(json.dumps(res, ensure_ascii=False)+'\n')
+            logger.info(f"账号{self.user_id}, 任务{self.task_id}完成记录")
+
+
+            logger.info("小红书智能体执行完成")
             return {"success": True, "message": "小红书智能体执行成功"}
 
         except Exception as e:
-            print(f"❌ 小红书智能体执行失败: {e}")
+            logger.error(f"小红书智能体执行失败: {e}")
             raise RuntimeError(f"小红书智能体执行失败: {e}")
+        finally:
+            # 清理MCP连接资源
+            if hasattr(self, 'mcp_client') and self.mcp_client:
+                try:
+                    await self.mcp_client.close()
+                except Exception as close_error:
+                    logger.debug(f"关闭MCP连接时发生错误（可忽略）: {close_error}")

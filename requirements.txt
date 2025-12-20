@@ -40,3 +40,4 @@ pyyaml>=6.0
 python-box>=7.0.0
 click>=8.0.0
 rich>=13.0.0
+loguru>=0.7.0
