@@ -14,7 +14,7 @@ class TestImageFiles:
 	"""Test image file operations - only external reading supported."""
 
 	def create_test_image(self, width: int = 100, height: int = 100, format: str = 'PNG') -> bytes:
-		"""Create a test image and return bytes."""
+		"""Create a start image and return bytes."""
 		img = Image.new('RGB', (width, height), color='red')
 		buffer = io.BytesIO()
 		img.save(buffer, format=format)
@@ -25,7 +25,7 @@ class TestImageFiles:
 	async def test_read_external_png_image(self, tmp_path: Path):
 		"""Test reading external PNG image file."""
 		# Create an external image file
-		external_file = tmp_path / 'test.png'
+		external_file = tmp_path / 'start.png'
 		img_bytes = self.create_test_image(width=300, height=200, format='PNG')
 		external_file.write_bytes(img_bytes)
 
@@ -39,7 +39,7 @@ class TestImageFiles:
 		assert len(structured_result['images']) == 1
 
 		img_data = structured_result['images'][0]
-		assert img_data['name'] == 'test.png'
+		assert img_data['name'] == 'start.png'
 		assert 'data' in img_data
 		# Verify base64 is valid
 		decoded = base64.b64decode(img_data['data'])
@@ -68,7 +68,7 @@ class TestImageFiles:
 	@pytest.mark.asyncio
 	async def test_read_jpeg_extension(self, tmp_path: Path):
 		"""Test reading .jpeg extension (not just .jpg)."""
-		external_file = tmp_path / 'test.jpeg'
+		external_file = tmp_path / 'start.jpeg'
 		img_bytes = self.create_test_image(format='JPEG')
 		external_file.write_bytes(img_bytes)
 
@@ -76,7 +76,7 @@ class TestImageFiles:
 		structured_result = await fs.read_file_structured(str(external_file), external_file=True)
 
 		assert structured_result['images'] is not None
-		assert structured_result['images'][0]['name'] == 'test.jpeg'
+		assert structured_result['images'][0]['name'] == 'start.jpeg'
 
 	@pytest.mark.asyncio
 	async def test_read_nonexistent_image(self, tmp_path: Path):
@@ -149,20 +149,20 @@ class TestImageFiles:
 		fs = FileSystem(tmp_path / 'workspace')
 
 		# Test .jpg
-		jpg_file = tmp_path / 'test.jpg'
+		jpg_file = tmp_path / 'start.jpg'
 		img = Image.new('RGB', (50, 50), color='yellow')
 		img.save(str(jpg_file), format='JPEG')
 		result_jpg = await fs.read_file_structured(str(jpg_file), external_file=True)
 		assert result_jpg['images'] is not None
 
 		# Test .jpeg
-		jpeg_file = tmp_path / 'test.jpeg'
+		jpeg_file = tmp_path / 'start.jpeg'
 		img.save(str(jpeg_file), format='JPEG')
 		result_jpeg = await fs.read_file_structured(str(jpeg_file), external_file=True)
 		assert result_jpeg['images'] is not None
 
 		# Test .png
-		png_file = tmp_path / 'test.png'
+		png_file = tmp_path / 'start.png'
 		img.save(str(png_file), format='PNG')
 		result_png = await fs.read_file_structured(str(png_file), external_file=True)
 		assert result_png['images'] is not None
@@ -189,18 +189,18 @@ class TestActionResultImages:
 		"""Test creating ActionResult with images."""
 		from browser_use.agent.views import ActionResult
 
-		images = [{'name': 'test.png', 'data': 'base64_encoded_data_here'}]
+		images = [{'name': 'start.png', 'data': 'base64_encoded_data_here'}]
 
 		result = ActionResult(
-			extracted_content='Read image file test.png',
-			long_term_memory='Read image file test.png',
+			extracted_content='Read image file start.png',
+			long_term_memory='Read image file start.png',
 			images=images,
 			include_extracted_content_only_once=True,
 		)
 
 		assert result.images is not None
 		assert len(result.images) == 1
-		assert result.images[0]['name'] == 'test.png'
+		assert result.images[0]['name'] == 'start.png'
 		assert result.images[0]['data'] == 'base64_encoded_data_here'
 
 	def test_action_result_without_images(self):

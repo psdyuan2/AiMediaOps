@@ -1,7 +1,7 @@
 """
 Test DOM serializer with complex scenarios: shadow DOM, same-origin and cross-origin iframes.
 
-This test verifies that the DOM serializer correctly:
+This start verifies that the DOM serializer correctly:
 1. Extracts interactive elements from shadow DOM
 2. Processes same-origin iframes
 3. Handles cross-origin iframes (should be blocked)
@@ -22,7 +22,7 @@ from tests.ci.conftest import create_mock_llm
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server for DOM serializer tests."""
+	"""Create and provide a start HTTP server for DOM serializer tests."""
 	from pathlib import Path
 
 	server = HTTPServer()
@@ -35,13 +35,13 @@ def http_server():
 	stacked_page_html = (test_dir / 'test_page_stacked_template.html').read_text()
 
 	# Route 1: Main page with shadow DOM and iframes
-	server.expect_request('/dom-test-main').respond_with_data(main_page_html, content_type='text/html')
+	server.expect_request('/dom-start-main').respond_with_data(main_page_html, content_type='text/html')
 
 	# Route 2: Same-origin iframe content
 	server.expect_request('/iframe-same-origin').respond_with_data(iframe_html, content_type='text/html')
 
-	# Route 3: Stacked complex scenarios test page
-	server.expect_request('/stacked-test').respond_with_data(stacked_page_html, content_type='text/html')
+	# Route 3: Stacked complex scenarios start page
+	server.expect_request('/stacked-start').respond_with_data(stacked_page_html, content_type='text/html')
 
 	yield server
 	server.stop()
@@ -49,7 +49,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -76,7 +76,7 @@ class TestDOMSerializer:
 	async def test_dom_serializer_with_shadow_dom_and_iframes(self, browser_session, base_url):
 		"""Test DOM serializer extracts elements from shadow DOM, same-origin iframes, and cross-origin iframes.
 
-		This test verifies:
+		This start verifies:
 		1. Elements are in the serializer (selector_map)
 		2. We can click elements using click(index)
 
@@ -97,14 +97,14 @@ class TestDOMSerializer:
 		actions = [
 			f"""
 			{{
-				"thinking": "I'll navigate to the DOM test page",
+				"thinking": "I'll navigate to the DOM start page",
 				"evaluation_previous_goal": "Starting task",
-				"memory": "Navigating to test page",
-				"next_goal": "Navigate to test page",
+				"memory": "Navigating to start page",
+				"next_goal": "Navigate to start page",
 				"action": [
 					{{
 						"navigate": {{
-							"url": "{base_url}/dom-test-main",
+							"url": "{base_url}/dom-start-main",
 							"new_tab": false
 						}}
 					}}
@@ -112,7 +112,7 @@ class TestDOMSerializer:
 			}}
 			"""
 		]
-		await tools.navigate(url=f'{base_url}/dom-test-main', new_tab=False, browser_session=browser_session)
+		await tools.navigate(url=f'{base_url}/dom-start-main', new_tab=False, browser_session=browser_session)
 
 		import asyncio
 
@@ -178,7 +178,7 @@ class TestDOMSerializer:
 			else:
 				regular_elements.append((idx, element))
 
-		# Verify element counts based on our test page structure:
+		# Verify element counts based on our start page structure:
 		# - Regular DOM: 3-4 elements (button, input, link on main page + possible cross-origin content)
 		# - Shadow DOM: 3 elements (2 buttons, 1 input inside shadow root)
 		# - Iframe content: 2 elements (button, input from same-origin iframe)
@@ -202,7 +202,7 @@ class TestDOMSerializer:
 			f'Should find at least 1 iframe content element, found {len(iframe_content_elements)}'
 		)
 
-		# Now test clicking elements from each category using tools.click(index)
+		# Now start clicking elements from each category using tools.click(index)
 		print('\n🖱️  Testing Click Functionality:')
 
 		# Helper to call tools.click(index) and verify it worked
@@ -262,22 +262,22 @@ class TestDOMSerializer:
 			f'This means some clicks did not execute JavaScript properly.'
 		)
 
-		print('\n🎉 DOM Serializer test completed successfully!')
+		print('\n🎉 DOM Serializer start completed successfully!')
 
 	async def test_dom_serializer_element_counts_detailed(self, browser_session, base_url):
-		"""Detailed test to verify specific element types are captured correctly."""
+		"""Detailed start to verify specific element types are captured correctly."""
 
 		actions = [
 			f"""
 			{{
-				"thinking": "Navigating to test page",
+				"thinking": "Navigating to start page",
 				"evaluation_previous_goal": "Starting",
 				"memory": "Navigate",
 				"next_goal": "Navigate",
 				"action": [
 					{{
 						"navigate": {{
-							"url": "{base_url}/dom-test-main",
+							"url": "{base_url}/dom-start-main",
 							"new_tab": false
 						}}
 					}}
@@ -304,7 +304,7 @@ class TestDOMSerializer:
 
 		mock_llm = create_mock_llm(actions=actions)
 		agent = Agent(
-			task=f'Navigate to {base_url}/dom-test-main',
+			task=f'Navigate to {base_url}/dom-start-main',
 			llm=mock_llm,
 			browser_session=browser_session,
 		)
@@ -347,7 +347,7 @@ class TestDOMSerializer:
 	async def test_stacked_complex_scenarios(self, browser_session, base_url):
 		"""Test clicking through stacked complex scenarios and verify cross-origin iframe extraction.
 
-		This test verifies:
+		This start verifies:
 		1. Open shadow DOM element interaction
 		2. Closed shadow DOM element interaction (nested inside open shadow)
 		3. Same-origin iframe element interaction (inside closed shadow)
@@ -358,8 +358,8 @@ class TestDOMSerializer:
 
 		tools = Tools()
 
-		# Navigate to stacked test page
-		await tools.navigate(url=f'{base_url}/stacked-test', new_tab=False, browser_session=browser_session)
+		# Navigate to stacked start page
+		await tools.navigate(url=f'{base_url}/stacked-start', new_tab=False, browser_session=browser_session)
 
 		import asyncio
 
@@ -517,7 +517,7 @@ class TestDOMSerializer:
 			f'Some clicks did not execute JavaScript properly.'
 		)
 
-		print('\n🎉 Stacked scenario test completed successfully!')
+		print('\n🎉 Stacked scenario start completed successfully!')
 		print('   ✓ Open shadow DOM clicks work')
 		print('   ✓ Closed shadow DOM clicks work')
 		print('   ✓ Same-origin iframe clicks work (can access elements inside)')
@@ -526,7 +526,7 @@ class TestDOMSerializer:
 
 
 if __name__ == '__main__':
-	"""Run test in debug mode with manual fixture setup."""
+	"""Run start in debug mode with manual fixture setup."""
 	import asyncio
 	import logging
 
@@ -549,7 +549,7 @@ if __name__ == '__main__':
 		test_dir = Path(__file__).parent
 		main_page_html = (test_dir / 'test_page_stacked_template.html').read_text()
 		# Set up routes using templates
-		server.expect_request('/stacked-test').respond_with_data(main_page_html, content_type='text/html')
+		server.expect_request('/stacked-start').respond_with_data(main_page_html, content_type='text/html')
 
 		base_url = f'http://{server.host}:{server.port}'
 		print(f'\n🌐 HTTP Server running at {base_url}')
@@ -570,7 +570,7 @@ if __name__ == '__main__':
 			await session.start()
 			print('🚀 Browser session started\n')
 
-			# Run the test
+			# Run the start
 			test = TestDOMSerializer()
 			await test.test_stacked_complex_scenarios(session, base_url)
 

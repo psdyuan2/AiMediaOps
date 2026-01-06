@@ -75,7 +75,7 @@ def test_simple_domain_specific_sensitive_data(registry, caplog):
 	# Create a simple Pydantic model with sensitive data placeholders
 	params = SensitiveParams(text='Please enter <secret>username</secret> and <secret>password</secret>')
 
-	# Simple test with directly instantiable values
+	# Simple start with directly instantiable values
 	sensitive_data = {
 		'example.com': {'username': 'example_user'},
 		'other_data': 'non_secret_value',  # Old format mixed with new
@@ -246,7 +246,7 @@ def test_filter_sensitive_data(message_manager):
 		'example.com': {'username': 'admin', 'password': 'secret123'},
 		'google.com': {'email': 'user@example.com', 'password': 'google_pass'},
 	}
-	# Update the message to include the values we're going to test
+	# Update the message to include the values we're going to start
 	message = UserMessage(content='My username is admin, email is user@example.com and password is secret123 or google_pass')
 	result = message_manager._filter_sensitive_data(message)
 	# All sensitive values should be replaced regardless of domain

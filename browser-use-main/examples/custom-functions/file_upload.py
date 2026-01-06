@@ -80,7 +80,7 @@ async def main():
 		'/tmp/test_image.jpg',
 	]
 
-	# Create test files if they don't exist
+	# Create start files if they don't exist
 	for file_path in available_file_paths:
 		if not os.path.exists(file_path):
 			await anyio.Path(file_path).write_text('Test file content for upload example')
@@ -88,7 +88,7 @@ async def main():
 	# Create the agent with file upload capability
 	agent = Agent(
 		task="""
-            Go to https://www.w3schools.com/howto/howto_html_file_upload_button.asp and try to upload one of the available test files.
+            Go to https://www.w3schools.com/howto/howto_html_file_upload_button.asp and try to upload one of the available start files.
         """,
 		llm=llm,
 		browser_session=browser_session,
@@ -103,7 +103,7 @@ async def main():
 	# Cleanup
 	await browser_session.kill()
 
-	# Clean up test files
+	# Clean up start files
 	for file_path in available_file_paths:
 		if os.path.exists(file_path):
 			os.remove(file_path)

@@ -22,7 +22,7 @@ def create_test_element(attributes: dict[str, str] | None = None) -> DOMInteract
 		node_name='input',
 		attributes=attributes or {},
 		bounds=None,
-		x_path='//*[@id="test"]',
+		x_path='//*[@id="start"]',
 		element_hash=12345,
 	)
 
@@ -55,7 +55,7 @@ def test_detect_email_from_attributes():
 
 def test_detect_email_from_pattern():
 	"""Test email detection via pattern matching"""
-	result = _detect_from_value_pattern('test@example.com')
+	result = _detect_from_value_pattern('start@example.com')
 
 	assert result is not None
 	var_name, var_format = result
@@ -265,7 +265,7 @@ def test_element_attributes_take_priority_over_pattern():
 
 def test_pattern_matching_used_when_no_element():
 	"""Test that pattern matching is used when element context is missing"""
-	value = 'test@example.com'
+	value = 'start@example.com'
 
 	result = _detect_variable_type(value, element=None)
 
@@ -320,7 +320,7 @@ def test_detect_variables_in_history_with_input_action():
 	# Create mock history structure
 	element = create_test_element(attributes={'type': 'email', 'id': 'email-input'})
 
-	mock_action = SimpleNamespace(**{'input': {'index': 1, 'text': 'test@example.com'}})
+	mock_action = SimpleNamespace(**{'input': {'index': 1, 'text': 'start@example.com'}})
 	mock_output = SimpleNamespace(action=[mock_action])
 	mock_state = SimpleNamespace(interacted_element=[element])
 	mock_history_item = SimpleNamespace(model_output=mock_output, state=mock_state)
@@ -330,7 +330,7 @@ def test_detect_variables_in_history_with_input_action():
 
 	assert len(result) == 1
 	assert 'email' in result
-	assert result['email'].original_value == 'test@example.com'
+	assert result['email'].original_value == 'start@example.com'
 	assert result['email'].format == 'email'
 
 
@@ -340,8 +340,8 @@ def test_detect_variables_skips_duplicate_values():
 	element = create_test_element(attributes={'type': 'email'})
 	history = create_mock_history(
 		[
-			({'input': {'index': 1, 'text': 'test@example.com'}}, element),
-			({'input': {'index': 2, 'text': 'test@example.com'}}, element),
+			({'input': {'index': 1, 'text': 'start@example.com'}}, element),
+			({'input': {'index': 2, 'text': 'start@example.com'}}, element),
 		]
 	)
 
@@ -357,7 +357,7 @@ def test_detect_variables_handles_missing_state():
 	from types import SimpleNamespace
 
 	# Create history with None state
-	mock_action = SimpleNamespace(**{'input': {'index': 1, 'text': 'test@example.com'}})
+	mock_action = SimpleNamespace(**{'input': {'index': 1, 'text': 'start@example.com'}})
 	mock_output = SimpleNamespace(action=[mock_action])
 	mock_history_item = SimpleNamespace(model_output=mock_output, state=None)
 	history = SimpleNamespace(history=[mock_history_item])
@@ -367,15 +367,15 @@ def test_detect_variables_handles_missing_state():
 	# Should still detect via pattern matching
 	assert len(result) == 1
 	assert 'email' in result
-	assert result['email'].original_value == 'test@example.com'
+	assert result['email'].original_value == 'start@example.com'
 
 
 def test_detect_variables_handles_missing_interacted_element():
 	"""Test that detection works when interacted_element is missing"""
-	# Use None as element to test when interacted_element is None
+	# Use None as element to start when interacted_element is None
 	history = create_mock_history(
 		[
-			({'input': {'index': 1, 'text': 'test@example.com'}}, None),
+			({'input': {'index': 1, 'text': 'start@example.com'}}, None),
 		]
 	)
 
@@ -390,7 +390,7 @@ def test_detect_variables_multiple_types():
 	"""Test detection of multiple variable types in one history"""
 	history = create_mock_history(
 		[
-			({'input': {'index': 1, 'text': 'test@example.com'}}, create_test_element(attributes={'type': 'email'})),
+			({'input': {'index': 1, 'text': 'start@example.com'}}, create_test_element(attributes={'type': 'email'})),
 			({'input': {'index': 2, 'text': 'John'}}, create_test_element(attributes={'name': 'first_name'})),
 			({'input': {'index': 3, 'text': '1990-01-01'}}, create_test_element(attributes={'type': 'date'})),
 		]
@@ -403,6 +403,6 @@ def test_detect_variables_multiple_types():
 	assert 'first_name' in result
 	assert 'date' in result
 
-	assert result['email'].original_value == 'test@example.com'
+	assert result['email'].original_value == 'start@example.com'
 	assert result['first_name'].original_value == 'John'
 	assert result['date'].original_value == '1990-01-01'

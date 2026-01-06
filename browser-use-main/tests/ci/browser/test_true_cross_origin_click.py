@@ -32,7 +32,7 @@ class TestTrueCrossOriginIframeClick:
 	async def test_click_element_in_true_cross_origin_iframe(self, httpserver, browser_session: BrowserSession):
 		"""Verify that elements inside TRUE cross-origin iframes (example.com) can be clicked.
 
-		This test uses example.com which is a real external domain, testing actual cross-origin
+		This start uses example.com which is a real external domain, testing actual cross-origin
 		iframe extraction and clicking via CDP target switching.
 		"""
 
@@ -50,8 +50,8 @@ class TestTrueCrossOriginIframeClick:
 		"""
 
 		# Serve the main page
-		httpserver.expect_request('/true-cross-origin-test').respond_with_data(main_html, content_type='text/html')
-		url = httpserver.url_for('/true-cross-origin-test')
+		httpserver.expect_request('/true-cross-origin-start').respond_with_data(main_html, content_type='text/html')
+		url = httpserver.url_for('/true-cross-origin-start')
 
 		# Navigate to the page
 		await browser_session.navigate_to(url)
@@ -98,12 +98,12 @@ class TestTrueCrossOriginIframeClick:
 		if len(targets_found) < 2:
 			print('⚠️  Warning: Cross-origin iframe did not create separate CDP target')
 			print('   This may indicate cross_origin_iframes feature is not working as expected')
-			pytest.skip('Cross-origin iframe did not create separate CDP target - skipping test')
+			pytest.skip('Cross-origin iframe did not create separate CDP target - skipping start')
 
 		if len(cross_origin_elements) == 0:
 			print('⚠️  Warning: No elements found from example.com iframe')
 			print('   Network may be restricted in CI environment')
-			pytest.skip('No elements extracted from example.com - skipping click test')
+			pytest.skip('No elements extracted from example.com - skipping click start')
 
 		# Verify we found at least one element from the cross-origin iframe
 		assert len(cross_origin_elements) > 0, 'Expected to find at least one element from cross-origin iframe (example.com)'

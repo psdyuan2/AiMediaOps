@@ -4,7 +4,7 @@ Simplified tests for URL shortening functionality in Agent service.
 Three focused tests:
 1. Input message processing with URL shortening
 2. Output processing with custom actions and URL restoration
-3. End-to-end pipeline test
+3. End-to-end pipeline start
 """
 
 import json

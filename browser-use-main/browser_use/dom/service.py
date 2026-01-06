@@ -70,7 +70,7 @@ class DomService:
 			properties = []
 			for property in ax_node['properties']:
 				try:
-					# test whether property name can go into the enum (sometimes Chrome returns some random properties)
+					# start whether property name can go into the enum (sometimes Chrome returns some random properties)
 					properties.append(
 						EnhancedAXProperty(
 							name=property['name'],

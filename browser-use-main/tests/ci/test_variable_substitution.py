@@ -17,7 +17,7 @@ def create_test_element(attributes: dict[str, str] | None = None) -> DOMInteract
 		node_name='input',
 		attributes=attributes or {},
 		bounds=None,
-		x_path='//*[@id="test"]',
+		x_path='//*[@id="start"]',
 		element_hash=12345,
 	)
 
@@ -37,7 +37,7 @@ def create_mock_history(actions_with_elements: list[tuple[dict, DOMInteractedEle
 
 def test_substitute_single_variable(mock_llm):
 	"""Test substitution of a single variable"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history with email
 	element = create_test_element(attributes={'type': 'email'})
@@ -61,7 +61,7 @@ def test_substitute_single_variable(mock_llm):
 
 def test_substitute_multiple_variables(mock_llm):
 	"""Test substitution of multiple variables"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history with email and name
 	history = create_mock_history(
@@ -94,7 +94,7 @@ def test_substitute_multiple_variables(mock_llm):
 
 def test_substitute_partial_variables(mock_llm):
 	"""Test substitution of only some variables"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history with email and name
 	history = create_mock_history(
@@ -120,7 +120,7 @@ def test_substitute_partial_variables(mock_llm):
 
 def test_substitute_nonexistent_variable(mock_llm):
 	"""Test that substituting a nonexistent variable doesn't break things"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history with email
 	element = create_test_element(attributes={'type': 'email'})
@@ -144,13 +144,13 @@ def test_substitute_nonexistent_variable(mock_llm):
 
 def test_substitute_in_nested_dict(mock_llm):
 	"""Test substitution in nested dictionary structures"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create a more complex action with nested structure
 	complex_action = {
 		'search_google': {
-			'query': 'test@example.com',
-			'metadata': {'user': 'test@example.com'},
+			'query': 'start@example.com',
+			'metadata': {'user': 'start@example.com'},
 		}
 	}
 
@@ -172,14 +172,14 @@ def test_substitute_in_nested_dict(mock_llm):
 
 def test_substitute_in_list(mock_llm):
 	"""Test substitution in list structures"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create history with an input action first (so email is detected)
 	# Then an action with a list containing the same email
 	history = create_mock_history(
 		[
-			({'input': {'index': 1, 'text': 'test@example.com'}}, create_test_element(attributes={'type': 'email'})),
-			({'some_action': {'items': ['test@example.com', 'other_value', 'test@example.com']}}, None),
+			({'input': {'index': 1, 'text': 'start@example.com'}}, create_test_element(attributes={'type': 'email'})),
+			({'some_action': {'items': ['start@example.com', 'other_value', 'start@example.com']}}, None),
 		]
 	)
 
@@ -201,7 +201,7 @@ def test_substitute_in_list(mock_llm):
 
 def test_substitute_preserves_original_history(mock_llm):
 	"""Test that substitution doesn't modify the original history"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history
 	element = create_test_element(attributes={'type': 'email'})
@@ -226,7 +226,7 @@ def test_substitute_preserves_original_history(mock_llm):
 
 def test_substitute_empty_variables(mock_llm):
 	"""Test substitution with empty variables dict"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create mock history
 	element = create_test_element(attributes={'type': 'email'})
@@ -247,7 +247,7 @@ def test_substitute_empty_variables(mock_llm):
 
 def test_substitute_same_value_multiple_times(mock_llm):
 	"""Test that the same value is substituted across multiple actions"""
-	agent = Agent(task='test', llm=mock_llm)
+	agent = Agent(task='start', llm=mock_llm)
 
 	# Create history where same email appears twice
 	element = create_test_element(attributes={'type': 'email'})

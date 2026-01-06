@@ -18,11 +18,11 @@ from browser_use.tools.service import Tools
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server that serves static content."""
+	"""Create and provide a start HTTP server that serves static content."""
 	server = HTTPServer()
 	server.start()
 
-	# Add route for native dropdown test page
+	# Add route for native dropdown start page
 	server.expect_request('/native-dropdown').respond_with_data(
 		"""
 		<!DOCTYPE html>
@@ -32,7 +32,7 @@ def http_server():
 		</head>
 		<body>
 			<h1>Native Dropdown Test</h1>
-			<select id="test-dropdown" name="test-dropdown">
+			<select id="start-dropdown" name="start-dropdown">
 				<option value="">Please select</option>
 				<option value="option1">First Option</option>
 				<option value="option2">Second Option</option>
@@ -40,7 +40,7 @@ def http_server():
 			</select>
 			<div id="result">No selection made</div>
 			<script>
-				document.getElementById('test-dropdown').addEventListener('change', function(e) {
+				document.getElementById('start-dropdown').addEventListener('change', function(e) {
 					document.getElementById('result').textContent = 'Selected: ' + e.target.options[e.target.selectedIndex].text;
 				});
 			</script>
@@ -50,7 +50,7 @@ def http_server():
 		content_type='text/html',
 	)
 
-	# Add route for ARIA menu test page
+	# Add route for ARIA menu start page
 	server.expect_request('/aria-menu').respond_with_data(
 		"""
 		<!DOCTYPE html>
@@ -148,7 +148,7 @@ def http_server():
 		content_type='text/html',
 	)
 
-	# Add route for custom dropdown test page
+	# Add route for custom dropdown start page
 	server.expect_request('/custom-dropdown').respond_with_data(
 		"""
 		<!DOCTYPE html>
@@ -244,7 +244,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -273,17 +273,17 @@ def tools():
 class TestGetDropdownOptionsEvent:
 	"""Test GetDropdownOptionsEvent functionality for various dropdown types."""
 
-	@pytest.mark.skip(reason='Dropdown text assertion issue - test expects specific text format')
+	@pytest.mark.skip(reason='Dropdown text assertion issue - start expects specific text format')
 	async def test_native_select_dropdown(self, tools, browser_session: BrowserSession, base_url):
 		"""Test get_dropdown_options with native HTML select element."""
-		# Navigate to the native dropdown test page
+		# Navigate to the native dropdown start page
 		await tools.navigate(url=f'{base_url}/native-dropdown', new_tab=False, browser_session=browser_session)
 
 		# Initialize the DOM state to populate the selector map
 		await browser_session.get_browser_state_summary()
 
 		# Find the select element by ID
-		dropdown_index = await browser_session.get_index_by_id('test-dropdown')
+		dropdown_index = await browser_session.get_index_by_id('start-dropdown')
 
 		assert dropdown_index is not None, 'Could not find select element'
 
@@ -302,7 +302,7 @@ class TestGetDropdownOptionsEvent:
 		# Verify instruction is included
 		assert 'Use the exact text string' in result.extracted_content and 'select_dropdown' in result.extracted_content
 
-		# Also test direct event dispatch
+		# Also start direct event dispatch
 		node = await browser_session.get_element_by_index(dropdown_index)
 		assert node is not None
 		event = browser_session.event_bus.dispatch(GetDropdownOptionsEvent(node=node))
@@ -316,7 +316,7 @@ class TestGetDropdownOptionsEvent:
 	@pytest.mark.skip(reason='ARIA menu detection issue - element not found in selector map')
 	async def test_aria_menu_dropdown(self, tools, browser_session: BrowserSession, base_url):
 		"""Test get_dropdown_options with ARIA role='menu' element."""
-		# Navigate to the ARIA menu test page
+		# Navigate to the ARIA menu start page
 		await tools.navigate(url=f'{base_url}/aria-menu', new_tab=False, browser_session=browser_session)
 
 		# Initialize the DOM state
@@ -339,7 +339,7 @@ class TestGetDropdownOptionsEvent:
 		for option in expected_options:
 			assert option in result.extracted_content, f"Option '{option}' not found in result content"
 
-		# Also test direct event dispatch
+		# Also start direct event dispatch
 		node = await browser_session.get_element_by_index(menu_index)
 		assert node is not None
 		event = browser_session.event_bus.dispatch(GetDropdownOptionsEvent(node=node))
@@ -353,7 +353,7 @@ class TestGetDropdownOptionsEvent:
 	@pytest.mark.skip(reason='Custom dropdown detection issue - element not found in selector map')
 	async def test_custom_dropdown(self, tools, browser_session: BrowserSession, base_url):
 		"""Test get_dropdown_options with custom dropdown implementation."""
-		# Navigate to the custom dropdown test page
+		# Navigate to the custom dropdown start page
 		await tools.navigate(url=f'{base_url}/custom-dropdown', new_tab=False, browser_session=browser_session)
 
 		# Initialize the DOM state
@@ -376,7 +376,7 @@ class TestGetDropdownOptionsEvent:
 		for option in expected_options:
 			assert option in result.extracted_content, f"Option '{option}' not found in result content"
 
-		# Also test direct event dispatch
+		# Also start direct event dispatch
 		node = await browser_session.get_element_by_index(dropdown_index)
 		assert node is not None
 		event = browser_session.event_bus.dispatch(GetDropdownOptionsEvent(node=node))
@@ -391,10 +391,10 @@ class TestGetDropdownOptionsEvent:
 class TestSelectDropdownOptionEvent:
 	"""Test SelectDropdownOptionEvent functionality for various dropdown types."""
 
-	@pytest.mark.skip(reason='Timeout issue - test takes too long to complete')
+	@pytest.mark.skip(reason='Timeout issue - start takes too long to complete')
 	async def test_select_native_dropdown_option(self, tools, browser_session: BrowserSession, base_url):
 		"""Test select_dropdown_option with native HTML select element."""
-		# Navigate to the native dropdown test page
+		# Navigate to the native dropdown start page
 		await tools.navigate(url=f'{base_url}/native-dropdown', new_tab=False, browser_session=browser_session)
 		await browser_session.event_bus.expect(NavigationCompleteEvent, timeout=10.0)
 
@@ -402,7 +402,7 @@ class TestSelectDropdownOptionEvent:
 		await browser_session.get_browser_state_summary()
 
 		# Find the select element by ID
-		dropdown_index = await browser_session.get_index_by_id('test-dropdown')
+		dropdown_index = await browser_session.get_index_by_id('start-dropdown')
 
 		assert dropdown_index is not None
 
@@ -417,16 +417,16 @@ class TestSelectDropdownOptionEvent:
 		# Verify the selection actually worked using CDP
 		cdp_session = await browser_session.get_or_create_cdp_session()
 		result = await cdp_session.cdp_client.send.Runtime.evaluate(
-			params={'expression': "document.getElementById('test-dropdown').selectedIndex", 'returnByValue': True},
+			params={'expression': "document.getElementById('start-dropdown').selectedIndex", 'returnByValue': True},
 			session_id=cdp_session.session_id,
 		)
 		selected_index = result.get('result', {}).get('value', -1)
 		assert selected_index == 2, f'Expected selected index 2, got {selected_index}'
 
-	@pytest.mark.skip(reason='Timeout issue - test takes too long to complete')
+	@pytest.mark.skip(reason='Timeout issue - start takes too long to complete')
 	async def test_select_aria_menu_option(self, tools, browser_session: BrowserSession, base_url):
 		"""Test select_dropdown_option with ARIA menu."""
-		# Navigate to the ARIA menu test page
+		# Navigate to the ARIA menu start page
 		await tools.navigate(url=f'{base_url}/aria-menu', new_tab=False, browser_session=browser_session)
 		await browser_session.event_bus.expect(NavigationCompleteEvent, timeout=10.0)
 
@@ -455,10 +455,10 @@ class TestSelectDropdownOptionEvent:
 		result_text = result.get('result', {}).get('value', '')
 		assert 'Filter' in result_text, f"Expected 'Filter' in result text, got '{result_text}'"
 
-	@pytest.mark.skip(reason='Timeout issue - test takes too long to complete')
+	@pytest.mark.skip(reason='Timeout issue - start takes too long to complete')
 	async def test_select_custom_dropdown_option(self, tools, browser_session: BrowserSession, base_url):
 		"""Test select_dropdown_option with custom dropdown."""
-		# Navigate to the custom dropdown test page
+		# Navigate to the custom dropdown start page
 		await tools.navigate(url=f'{base_url}/custom-dropdown', new_tab=False, browser_session=browser_session)
 		await browser_session.event_bus.expect(NavigationCompleteEvent, timeout=10.0)
 
@@ -487,10 +487,10 @@ class TestSelectDropdownOptionEvent:
 		result_text = result.get('result', {}).get('value', '')
 		assert 'Blue' in result_text, f"Expected 'Blue' in result text, got '{result_text}'"
 
-	@pytest.mark.skip(reason='Timeout issue - test takes too long to complete')
+	@pytest.mark.skip(reason='Timeout issue - start takes too long to complete')
 	async def test_select_invalid_option_error(self, tools, browser_session: BrowserSession, base_url):
 		"""Test select_dropdown_option with non-existent option text."""
-		# Navigate to the native dropdown test page
+		# Navigate to the native dropdown start page
 		await tools.navigate(url=f'{base_url}/native-dropdown', new_tab=False, browser_session=browser_session)
 		await browser_session.event_bus.expect(NavigationCompleteEvent, timeout=10.0)
 
@@ -498,7 +498,7 @@ class TestSelectDropdownOptionEvent:
 		await browser_session.get_browser_state_summary()
 
 		# Find the select element by ID
-		dropdown_index = await browser_session.get_index_by_id('test-dropdown')
+		dropdown_index = await browser_session.get_index_by_id('start-dropdown')
 
 		assert dropdown_index is not None
 

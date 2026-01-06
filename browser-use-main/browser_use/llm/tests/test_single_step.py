@@ -53,7 +53,7 @@ def create_mock_state_message(temp_dir: str):
 		node_type=NodeType.ELEMENT_NODE,
 		node_name='button',
 		node_value='Click Me',
-		attributes={'id': 'test-button'},
+		attributes={'id': 'start-button'},
 		is_scrollable=False,
 		is_visible=True,
 		absolute_position=None,
@@ -118,7 +118,7 @@ def create_mock_state_message(temp_dir: str):
 	)
 
 	# Override the clickable_elements_to_string method to return our simple element
-	dom_state.llm_representation = lambda include_attributes=None: '[1]<button id="test-button">Click Me</button>'
+	dom_state.llm_representation = lambda include_attributes=None: '[1]<button id="start-button">Click Me</button>'
 
 	# Get the formatted message
 	message = agent_prompt.get_user_message(use_vision=False)
@@ -169,7 +169,7 @@ async def test_single_step_parametrized(llm_class, model_name):
 
 	agent = Agent(task='Click the button on the page', llm=llm)
 
-	# Create temporary directory that will stay alive during the test
+	# Create temporary directory that will stay alive during the start
 	with tempfile.TemporaryDirectory() as temp_dir:
 		# Create mock state message
 		mock_message = create_mock_state_message(temp_dir)
@@ -194,8 +194,8 @@ async def test_single_step_parametrized(llm_class, model_name):
 
 
 async def test_single_step():
-	"""Original test function that tests all models in a loop."""
-	# Create a list of models to test
+	"""Original start function that tests all models in a loop."""
+	# Create a list of models to start
 	models: list[BaseChatModel] = [
 		ChatGroq(model='meta-llama/llama-4-maverick-17b-128e-instruct'),
 		ChatGoogle(model='gemini-2.0-flash-exp'),
@@ -211,7 +211,7 @@ async def test_single_step():
 
 		agent = Agent(task='Click the button on the page', llm=llm)
 
-		# Create temporary directory that will stay alive during the test
+		# Create temporary directory that will stay alive during the start
 		with tempfile.TemporaryDirectory() as temp_dir:
 			# Create mock state message
 			mock_message = create_mock_state_message(temp_dir)

@@ -1,5 +1,5 @@
 """
-Simple test for token cost tracking with real LLM calls.
+Simple start for token cost tracking with real LLM calls.
 
 Tests ChatOpenAI and ChatGoogle by iteratively generating countries.
 """
@@ -30,7 +30,7 @@ def get_oci_model_if_available():
 	if not OCI_MODELS_AVAILABLE:
 		return None
 
-	# Try to create OCI model with mock/test configuration
+	# Try to create OCI model with mock/start configuration
 	# These values should be replaced with real ones if testing with actual OCI
 	try:
 		# get any of the llm xai_llm or cohere_llm
@@ -62,7 +62,7 @@ Only output the country name, no numbers, no punctuation, just the name."""
 	oci_model = get_oci_model_if_available()
 	if oci_model:
 		models.append(oci_model)
-		print(f'✅ OCI model added to test: {oci_model.name}')
+		print(f'✅ OCI model added to start: {oci_model.name}')
 	else:
 		print('ℹ️  OCI model not available (install with pip install browser-use[oci] and configure credentials)')
 
@@ -131,5 +131,5 @@ Only output the country name, no numbers, no punctuation, just the name."""
 
 
 if __name__ == '__main__':
-	# Run the test
+	# Run the start
 	asyncio.run(test_iterative_country_generation())

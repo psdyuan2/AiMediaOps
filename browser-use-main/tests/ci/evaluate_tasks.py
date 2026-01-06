@@ -99,11 +99,11 @@ async def run_single_task(task_file):
 
 			event = session.event_bus.dispatch(NavigateToUrlEvent(url='https://httpbin.org/get', new_tab=True))
 			await event
-			print('[DEBUG] Browser test: navigation successful', file=sys.stderr)
+			print('[DEBUG] Browser start: navigation successful', file=sys.stderr)
 			title = await session.get_current_page_title()
-			print(f"[DEBUG] Browser test: got title '{title}'", file=sys.stderr)
+			print(f"[DEBUG] Browser start: got title '{title}'", file=sys.stderr)
 		except Exception as browser_error:
-			print(f'[DEBUG] Browser test failed: {str(browser_error)}', file=sys.stderr)
+			print(f'[DEBUG] Browser start failed: {str(browser_error)}', file=sys.stderr)
 			print(
 				f'[DEBUG] Browser error type: {type(browser_error).__name__}',
 				file=sys.stderr,
@@ -129,13 +129,13 @@ async def run_single_task(task_file):
 
 		# Test if LLM is working by making a simple call
 		try:
-			response = await agent_llm.ainvoke([UserMessage(content="Say 'test'")])
+			response = await agent_llm.ainvoke([UserMessage(content="Say 'start'")])
 			print(
-				f'[DEBUG] LLM test call successful: {response.completion[:50]}',
+				f'[DEBUG] LLM start call successful: {response.completion[:50]}',
 				file=sys.stderr,
 			)
 		except Exception as llm_error:
-			print(f'[DEBUG] LLM test call failed: {str(llm_error)}', file=sys.stderr)
+			print(f'[DEBUG] LLM start call failed: {str(llm_error)}', file=sys.stderr)
 
 		# Debug: capture more details about the agent execution
 		total_steps = len(history.history) if hasattr(history, 'history') else 0

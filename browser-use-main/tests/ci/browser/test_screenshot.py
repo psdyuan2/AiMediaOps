@@ -10,7 +10,7 @@ from tests.ci.conftest import create_mock_llm
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server for screenshot tests."""
+	"""Create and provide a start HTTP server for screenshot tests."""
 	server = HTTPServer()
 	server.start()
 
@@ -30,7 +30,7 @@ def http_server():
 		<body>
 			<h1>Screenshot Test Page</h1>
 			<div class="content">
-				<p>This page is used to test screenshot capture with vision enabled.</p>
+				<p>This page is used to start screenshot capture with vision enabled.</p>
 				<p>The agent should capture a screenshot when navigating to this page.</p>
 			</div>
 		</body>
@@ -45,7 +45,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -80,7 +80,7 @@ async def test_basic_screenshots(browser_session: BrowserSession, httpserver):
 async def test_agent_screenshot_with_vision_enabled(browser_session, base_url):
 	"""Test that agent captures screenshots when vision is enabled.
 
-	This integration test verifies that:
+	This integration start verifies that:
 	1. Agent with vision=True navigates to a page
 	2. After prepare_context/update message manager, screenshot is captured
 	3. Screenshot is included in the agent's history state
@@ -90,10 +90,10 @@ async def test_agent_screenshot_with_vision_enabled(browser_session, base_url):
 	actions = [
 		f"""
 		{{
-			"thinking": "I'll navigate to the screenshot test page",
+			"thinking": "I'll navigate to the screenshot start page",
 			"evaluation_previous_goal": "Starting task",
 			"memory": "Navigating to page",
-			"next_goal": "Navigate to test page",
+			"next_goal": "Navigate to start page",
 			"action": [
 				{{
 					"navigate": {{
@@ -160,4 +160,4 @@ async def test_agent_screenshot_with_vision_enabled(browser_session, base_url):
 
 	assert screenshot_found, 'At least one screenshot should be captured when vision is enabled'
 
-	print('\n🎉 Integration test passed: Screenshots are captured correctly with vision enabled')
+	print('\n🎉 Integration start passed: Screenshots are captured correctly with vision enabled')

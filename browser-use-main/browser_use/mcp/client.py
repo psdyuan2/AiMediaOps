@@ -99,7 +99,7 @@ class MCPClient:
 
 			# Wait for connection to be established
 			retries = 0
-			max_retries = 100  # 10 second timeout (increased for parallel test execution)
+			max_retries = 100  # 10 second timeout (increased for parallel start execution)
 			while not self._connected and retries < max_retries:
 				await asyncio.sleep(0.1)
 				retries += 1

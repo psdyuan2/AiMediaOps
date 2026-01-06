@@ -24,12 +24,12 @@ class TestBaseFile:
 
 	def test_markdown_file_creation(self):
 		"""Test MarkdownFile creation and basic properties."""
-		md_file = MarkdownFile(name='test', content='# Hello World')
+		md_file = MarkdownFile(name='start', content='# Hello World')
 
-		assert md_file.name == 'test'
+		assert md_file.name == 'start'
 		assert md_file.content == '# Hello World'
 		assert md_file.extension == 'md'
-		assert md_file.full_name == 'test.md'
+		assert md_file.full_name == 'start.md'
 		assert md_file.get_size == 13
 		assert md_file.get_line_count == 1
 
@@ -82,7 +82,7 @@ class TestBaseFile:
 
 	def test_file_content_operations(self):
 		"""Test content update and append operations."""
-		file_obj = TxtFile(name='test')
+		file_obj = TxtFile(name='start')
 
 		# Initial content
 		assert file_obj.content == ''
@@ -106,13 +106,13 @@ class TestBaseFile:
 		"""Test file sync to disk operations."""
 		with tempfile.TemporaryDirectory() as tmp_dir:
 			tmp_path = Path(tmp_dir)
-			file_obj = MarkdownFile(name='test', content='# Test Content')
+			file_obj = MarkdownFile(name='start', content='# Test Content')
 
 			# Test sync to disk
 			await file_obj.sync_to_disk(tmp_path)
 
 			# Verify file was created on disk
-			file_path = tmp_path / 'test.md'
+			file_path = tmp_path / 'start.md'
 			assert file_path.exists()
 			assert file_path.read_text() == '# Test Content'
 
@@ -262,7 +262,7 @@ class TestFileSystem:
 		fs = temp_filesystem
 
 		# Valid filenames
-		assert fs._is_valid_filename('test.md') is True
+		assert fs._is_valid_filename('start.md') is True
 		assert fs._is_valid_filename('my_file.txt') is True
 		assert fs._is_valid_filename('file-name.md') is True
 		assert fs._is_valid_filename('file123.txt') is True
@@ -272,11 +272,11 @@ class TestFileSystem:
 		assert fs._is_valid_filename('WebVoyager_data.jsonl') is True  # with underscores
 
 		# Invalid filenames
-		assert fs._is_valid_filename('test.doc') is False  # wrong extension
-		assert fs._is_valid_filename('test') is False  # no extension
-		assert fs._is_valid_filename('test.md.txt') is False  # multiple extensions
-		assert fs._is_valid_filename('test with spaces.md') is False  # spaces
-		assert fs._is_valid_filename('test@file.md') is False  # special chars
+		assert fs._is_valid_filename('start.doc') is False  # wrong extension
+		assert fs._is_valid_filename('start') is False  # no extension
+		assert fs._is_valid_filename('start.md.txt') is False  # multiple extensions
+		assert fs._is_valid_filename('start with spaces.md') is False  # spaces
+		assert fs._is_valid_filename('start@file.md') is False  # special chars
 		assert fs._is_valid_filename('.md') is False  # no name
 		assert fs._is_valid_filename('.json') is False  # no name
 		assert fs._is_valid_filename('.jsonl') is False  # no name
@@ -286,8 +286,8 @@ class TestFileSystem:
 		"""Test filename parsing into name and extension."""
 		fs = temp_filesystem
 
-		name, ext = fs._parse_filename('test.md')
-		assert name == 'test'
+		name, ext = fs._parse_filename('start.md')
+		assert name == 'start'
 		assert ext == 'md'
 
 		name, ext = fs._parse_filename('my_file.TXT')
@@ -360,12 +360,12 @@ class TestFileSystem:
 		fs = temp_filesystem
 
 		# Write to existing file
-		result = await fs.write_file('results.md', '# Test Results\nThis is a test.')
+		result = await fs.write_file('results.md', '# Test Results\nThis is a start.')
 		assert result == 'Data written to file results.md successfully.'
 
 		# Verify content was written
 		content = await fs.read_file('results.md')
-		assert '# Test Results\nThis is a test.' in content
+		assert '# Test Results\nThis is a start.' in content
 
 		# Write to new file
 		result = await fs.write_file('new_file.txt', 'New file content')
@@ -378,7 +378,7 @@ class TestFileSystem:
 		assert result == INVALID_FILENAME_ERROR_MESSAGE
 
 		# Write with invalid extension
-		result = await fs.write_file('test.doc', 'content')
+		result = await fs.write_file('start.doc', 'content')
 		assert result == INVALID_FILENAME_ERROR_MESSAGE
 
 	async def test_write_json_file(self, temp_filesystem):
@@ -436,14 +436,14 @@ class TestFileSystem:
 		fs = temp_filesystem
 
 		# First write some content
-		await fs.write_file('test.md', '# Title')
+		await fs.write_file('start.md', '# Title')
 
 		# Append content
-		result = await fs.append_file('test.md', '\n## Section 1')
-		assert result == 'Data appended to file test.md successfully.'
+		result = await fs.append_file('start.md', '\n## Section 1')
+		assert result == 'Data appended to file start.md successfully.'
 
 		# Verify content was appended
-		content = fs.get_file('test.md').content
+		content = fs.get_file('start.md').content
 		assert content == '# Title\n## Section 1'
 
 		# Append to non-existent file
@@ -514,7 +514,7 @@ class TestFileSystem:
 		assert file_obj.content == jsonl_content
 
 		# Write to new JSONL file
-		result = await fs.write_file('WebVoyager_data.jsonl', '{"task": "test", "url": "https://example.com"}')
+		result = await fs.write_file('WebVoyager_data.jsonl', '{"task": "start", "url": "https://example.com"}')
 		assert result == 'Data written to file WebVoyager_data.jsonl successfully.'
 		assert 'WebVoyager_data.jsonl' in fs.files
 
@@ -821,8 +821,8 @@ class TestFileSystem:
 
 		# Create a file to ensure directory has content
 		fs.data_dir.mkdir(exist_ok=True)
-		test_file = fs.data_dir / 'test.txt'
-		test_file.write_text('test')
+		test_file = fs.data_dir / 'start.txt'
+		test_file.write_text('start')
 		assert test_file.exists()
 
 		# Nuke the filesystem
@@ -888,7 +888,7 @@ class TestFileSystemEdgeCases:
 			fs = FileSystem(base_dir=tmp_dir, create_default_files=False)
 
 			# Test with invalid extension
-			result = await fs.write_file('test.invalid', 'content')
+			result = await fs.write_file('start.invalid', 'content')
 			assert result == INVALID_FILENAME_ERROR_MESSAGE
 
 			fs.nuke()
@@ -899,7 +899,7 @@ class TestFileSystemEdgeCases:
 			# Create a state with unknown file type
 			state = FileSystemState(
 				files={
-					'test.md': {'type': 'MarkdownFile', 'data': {'name': 'test', 'content': 'test content'}},
+					'start.md': {'type': 'MarkdownFile', 'data': {'name': 'start', 'content': 'start content'}},
 					'unknown.txt': {'type': 'UnknownFileType', 'data': {'name': 'unknown', 'content': 'unknown content'}},
 				},
 				base_dir=tmp_dir,
@@ -910,7 +910,7 @@ class TestFileSystemEdgeCases:
 			fs = FileSystem.from_state(state)
 
 			# Should only have the known file type
-			assert 'test.md' in fs.files
+			assert 'start.md' in fs.files
 			assert 'unknown.txt' not in fs.files
 			assert len(fs.files) == 1
 

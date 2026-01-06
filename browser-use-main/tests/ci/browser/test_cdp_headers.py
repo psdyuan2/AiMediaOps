@@ -29,7 +29,7 @@ def test_browser_profile_headers_attribute():
 
 def test_browser_profile_headers_inherited():
 	"""Test that BrowserSession can access headers from its profile."""
-	test_headers = {'Authorization': 'Bearer test-token'}
+	test_headers = {'Authorization': 'Bearer start-token'}
 
 	session = BrowserSession(cdp_url='wss://example.com/cdp', headers=test_headers)
 
@@ -40,9 +40,9 @@ def test_browser_profile_headers_inherited():
 async def test_cdp_client_headers_passed_on_connect():
 	"""Test that headers from BrowserProfile are passed to CDPClient on connect()."""
 	test_headers = {
-		'Authorization': 'AWS4-HMAC-SHA256 Credential=test...',
+		'Authorization': 'AWS4-HMAC-SHA256 Credential=start...',
 		'X-Amz-Date': '20250914T163733Z',
-		'X-Amz-Security-Token': 'test-token',
+		'X-Amz-Security-Token': 'start-token',
 		'Host': 'remote-browser.example.com',
 	}
 
@@ -60,7 +60,7 @@ async def test_cdp_client_headers_passed_on_connect():
 		mock_cdp_client.send.Target = MagicMock()
 		mock_cdp_client.send.Target.setAutoAttach = AsyncMock()
 		mock_cdp_client.send.Target.getTargets = AsyncMock(return_value={'targetInfos': []})
-		mock_cdp_client.send.Target.createTarget = AsyncMock(return_value={'targetId': 'test-target-id'})
+		mock_cdp_client.send.Target.createTarget = AsyncMock(return_value={'targetId': 'start-target-id'})
 
 		# Mock SessionManager (imported inside connect() from browser_use.browser.session_manager)
 		with patch('browser_use.browser.session_manager.SessionManager') as mock_session_manager_class:
@@ -101,7 +101,7 @@ async def test_cdp_client_no_headers_when_none():
 		mock_cdp_client.send.Target = MagicMock()
 		mock_cdp_client.send.Target.setAutoAttach = AsyncMock()
 		mock_cdp_client.send.Target.getTargets = AsyncMock(return_value={'targetInfos': []})
-		mock_cdp_client.send.Target.createTarget = AsyncMock(return_value={'targetId': 'test-target-id'})
+		mock_cdp_client.send.Target.createTarget = AsyncMock(return_value={'targetId': 'start-target-id'})
 
 		with patch('browser_use.browser.session_manager.SessionManager') as mock_session_manager_class:
 			mock_session_manager = MagicMock()
@@ -122,7 +122,7 @@ async def test_cdp_client_no_headers_when_none():
 @pytest.mark.asyncio
 async def test_headers_used_for_json_version_endpoint():
 	"""Test that headers are also used when fetching WebSocket URL from /json/version."""
-	test_headers = {'Authorization': 'Bearer test-token'}
+	test_headers = {'Authorization': 'Bearer start-token'}
 
 	# Use HTTP URL (not ws://) to trigger /json/version fetch
 	session = BrowserSession(cdp_url='http://remote-browser.example.com:9222', headers=test_headers)

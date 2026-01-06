@@ -298,8 +298,6 @@ class XiaohongshuAgent(BaseAgent):
         Raises:
             RuntimeError: 发布失败时抛出
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
 
         arguments = {
             "title": title,
@@ -366,8 +364,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             推荐列表
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
 
         results = await self.mcp_client.call_tool("list_feeds", {"limit": limit})
 
@@ -438,8 +434,6 @@ class XiaohongshuAgent(BaseAgent):
         Raises:
             RuntimeError: 发布失败时抛出
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
 
         arguments = {
             "title": title,
@@ -514,8 +508,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             用户主页信息字典
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
 
         arguments = {
             "user_id": user_id,
@@ -553,8 +545,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             操作结果信息字典
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
 
         arguments = {
             "feed_id": feed_id,
@@ -593,9 +583,6 @@ class XiaohongshuAgent(BaseAgent):
         Returns:
             操作结果信息字典
         """
-        await self.ensure_connected()
-        await self.ensure_logged_in()
-
         arguments = {
             "feed_id": feed_id,
             "xsec_token": xsec_token,
@@ -893,7 +880,7 @@ class XiaohongshuAgent(BaseAgent):
             logger.info("小红书智能体开始执行...")
 
             # 1. 建立MCP连接
-            # await self.ensure_connected()
+            await self.ensure_connected()
 
             # 2. 确保登录状态
             # logged_in = await self.ensure_logged_in()
@@ -908,20 +895,24 @@ class XiaohongshuAgent(BaseAgent):
 
             # 获取自己过去n篇笔记的内容和评论，并在评论区补充评论
             for note_title in previous_notes_title:
-                await asyncio.sleep(random.randint(5,20))
-                notes_info = await self.get_own_notes(note_title)
-                # 获取评论信息
-                note_info = notes_info[0]
-                comments = note_info['data']['comments']['list']
-                note_content = note_info['data']['note']['desc']
-                note_id, xsecToken = note_info['data']['note']['noteId'], note_info['data']['note']['xsecToken']
-                logger.debug(f"获取到的id和token：{note_id}, {xsecToken}")
-                # 评论该笔记
-                new_comments_obj = await self.generate_comment(note_content=note_content, comments=comments)
-                new_comments = new_comments_obj.content
+                try:
+                    await asyncio.sleep(random.randint(5,20))
+                    notes_info = await self.get_own_notes(note_title)
+                    # 获取评论信息
+                    note_info = notes_info[0]
+                    comments = note_info['data']['comments']['list']
+                    note_content = note_info['data']['note']['desc']
+                    note_id, xsecToken = note_info['data']['note']['noteId'], note_info['data']['note']['xsecToken']
+                    logger.debug(f"获取到的id和token：{note_id}, {xsecToken}")
+                    # 评论该笔记
+                    new_comments_obj = await self.generate_comment(note_content=note_content, comments=comments)
+                    new_comments = new_comments_obj.content
 
-                await self.post_comment(feed_id=note_id, content=new_comments, xsec_token=xsecToken)
-                logger.info(f"发表评论{new_comments[:50]}成功")
+                    await self.post_comment(feed_id=note_id, content=new_comments, xsec_token=xsecToken)
+                    logger.info(f"发表评论{new_comments[:50]}成功")
+                except Exception as e:
+                    logger.warning(f"评论历史笔记{note_title}失败：{e}")
+                    continue
 
             # 根据知识库，发布一篇笔记
             ## 获取知识库中的知识生成笔记内容

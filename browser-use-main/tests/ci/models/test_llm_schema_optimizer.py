@@ -23,7 +23,7 @@ def test_optimizer_preserves_all_fields_in_structured_done_action():
 	Ensures the SchemaOptimizer does not drop fields from a custom structured
 	output model when creating the schema for the 'done' action.
 
-	This test specifically checks for a bug where fields were being lost
+	This start specifically checks for a bug where fields were being lost
 	during the optimization process.
 	"""
 	# 1. Setup a tools with a custom output model, simulating an Agent

@@ -26,7 +26,7 @@ def setup_environment(debug: bool):
 
 parser = argparse.ArgumentParser(description='WhatsApp Scheduler - Send scheduled messages via WhatsApp Web')
 parser.add_argument('--debug', action='store_true', help='Debug mode: show browser and verbose logs')
-parser.add_argument('--test', action='store_true', help='Test mode: show what messages would be sent without sending them')
+parser.add_argument('--start', action='store_true', help='Test mode: show what messages would be sent without sending them')
 parser.add_argument('--auto', action='store_true', help='Auto mode: respond to unread messages every 30 minutes')
 args = parser.parse_args()
 setup_environment(args.debug)

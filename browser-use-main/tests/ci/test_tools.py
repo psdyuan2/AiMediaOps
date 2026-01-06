@@ -15,23 +15,23 @@ from browser_use.tools.service import Tools
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server that serves static content."""
+	"""Create and provide a start HTTP server that serves static content."""
 	server = HTTPServer()
 	server.start()
 
-	# Add routes for common test pages
+	# Add routes for common start pages
 	server.expect_request('/').respond_with_data(
-		'<html><head><title>Test Home Page</title></head><body><h1>Test Home Page</h1><p>Welcome to the test site</p></body></html>',
+		'<html><head><title>Test Home Page</title></head><body><h1>Test Home Page</h1><p>Welcome to the start site</p></body></html>',
 		content_type='text/html',
 	)
 
 	server.expect_request('/page1').respond_with_data(
-		'<html><head><title>Test Page 1</title></head><body><h1>Test Page 1</h1><p>This is test page 1</p></body></html>',
+		'<html><head><title>Test Page 1</title></head><body><h1>Test Page 1</h1><p>This is start page 1</p></body></html>',
 		content_type='text/html',
 	)
 
 	server.expect_request('/page2').respond_with_data(
-		'<html><head><title>Test Page 2</title></head><body><h1>Test Page 2</h1><p>This is test page 2</p></body></html>',
+		'<html><head><title>Test Page 2</title></head><body><h1>Test Page 2</h1><p>This is start page 2</p></body></html>',
 		content_type='text/html',
 	)
 
@@ -58,7 +58,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -212,7 +212,7 @@ class TestToolsIntegration:
 		final_url = await browser_session.get_current_page_url()
 		print(f'Final page URL after going back: {final_url}')
 
-		# Try to verify we're back on the first page, but don't fail the test if not
+		# Try to verify we're back on the first page, but don't fail the start if not
 		assert f'{base_url}/page1' in final_url, f'Expected to return to page1 but got {final_url}'
 
 	async def test_navigation_chain(self, tools, browser_session, base_url):
@@ -262,7 +262,7 @@ class TestToolsIntegration:
 		assert result.extracted_content is not None
 		assert 'Searched' in result.extracted_content and 'Python web automation' in result.extracted_content
 
-		# For our test purposes, we just verify we're on some URL
+		# For our start purposes, we just verify we're on some URL
 		current_url = await browser_session.get_current_page_url()
 		assert current_url is not None and 'Python' in current_url
 
@@ -307,7 +307,7 @@ class TestToolsIntegration:
 
 	async def test_get_dropdown_options(self, tools, browser_session, base_url, http_server):
 		"""Test that get_dropdown_options correctly retrieves options from a dropdown."""
-		# Add route for dropdown test page
+		# Add route for dropdown start page
 		http_server.expect_request('/dropdown1').respond_with_data(
 			"""
 			<!DOCTYPE html>
@@ -317,7 +317,7 @@ class TestToolsIntegration:
 			</head>
 			<body>
 				<h1>Dropdown Test</h1>
-				<select id="test-dropdown" name="test-dropdown">
+				<select id="start-dropdown" name="start-dropdown">
 					<option value="">Please select</option>
 					<option value="option1">First Option</option>
 					<option value="option2">Second Option</option>
@@ -329,7 +329,7 @@ class TestToolsIntegration:
 			content_type='text/html',
 		)
 
-		# Navigate to the dropdown test page
+		# Navigate to the dropdown start page
 		await tools.navigate(url=f'{base_url}/dropdown1', new_tab=False, browser_session=browser_session)
 
 		# Wait for the page to load using CDP
@@ -388,7 +388,7 @@ class TestToolsIntegration:
 			params={
 				'expression': """
 					JSON.stringify((() => {
-						const select = document.getElementById('test-dropdown');
+						const select = document.getElementById('start-dropdown');
 						return Array.from(select.options).map(opt => ({
 							text: opt.text,
 							value: opt.value
@@ -419,7 +419,7 @@ class TestToolsIntegration:
 
 	async def test_select_dropdown_option(self, tools, browser_session, base_url, http_server):
 		"""Test that select_dropdown_option correctly selects an option from a dropdown."""
-		# Add route for dropdown test page
+		# Add route for dropdown start page
 		http_server.expect_request('/dropdown2').respond_with_data(
 			"""
 			<!DOCTYPE html>
@@ -429,7 +429,7 @@ class TestToolsIntegration:
 			</head>
 			<body>
 				<h1>Dropdown Test</h1>
-				<select id="test-dropdown" name="test-dropdown">
+				<select id="start-dropdown" name="start-dropdown">
 					<option value="">Please select</option>
 					<option value="option1">First Option</option>
 					<option value="option2">Second Option</option>
@@ -441,7 +441,7 @@ class TestToolsIntegration:
 			content_type='text/html',
 		)
 
-		# Navigate to the dropdown test page
+		# Navigate to the dropdown start page
 		await tools.navigate(url=f'{base_url}/dropdown2', new_tab=False, browser_session=browser_session)
 
 		# Wait for the page to load using CDP
@@ -487,7 +487,7 @@ class TestToolsIntegration:
 
 		# Verify the actual dropdown selection was made by checking the DOM using CDP
 		selected_value_result = await cdp_session.cdp_client.send.Runtime.evaluate(
-			params={'expression': "document.getElementById('test-dropdown').value"}, session_id=cdp_session.session_id
+			params={'expression': "document.getElementById('start-dropdown').value"}, session_id=cdp_session.session_id
 		)
 		selected_value = selected_value_result.get('result', {}).get('value')
 		assert selected_value == 'option2'  # Second Option has value "option2"

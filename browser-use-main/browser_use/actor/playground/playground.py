@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Playground script to test the browser-use actor API.
+Playground script to start the browser-use actor API.
 
 This script demonstrates:
 - Starting a browser session
@@ -199,15 +199,15 @@ async def main():
 				logger.info('🔍 Found search input, testing form interaction...')
 
 				await search_input.focus()
-				await search_input.fill('test search query')
+				await search_input.fill('start search query')
 				await page.press('Enter')
 
-				logger.info('✅ Form interaction test completed')
+				logger.info('✅ Form interaction start completed')
 			else:
 				logger.info('ℹ️ No search inputs found for form testing')
 
 		except Exception as e:
-			logger.info(f'ℹ️ Form interaction test skipped: {e}')
+			logger.info(f'ℹ️ Form interaction start skipped: {e}')
 
 			# wait 2 seconds before closing the new page
 		logger.info('🕒 Waiting 2 seconds before closing the new page...')

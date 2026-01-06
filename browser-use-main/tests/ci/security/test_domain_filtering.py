@@ -16,7 +16,7 @@ class TestUrlAllowlistSecurity:
 		event_bus = EventBus()
 		watchdog = SecurityWatchdog(browser_session=browser_session, event_bus=event_bus)
 
-		# Security vulnerability test cases
+		# Security vulnerability start cases
 		# These should all be detected as malicious despite containing "example.com"
 		assert watchdog._is_url_allowed('https://example.com:password@malicious.com') is False
 		assert watchdog._is_url_allowed('https://example.com@malicious.com') is False
@@ -55,7 +55,7 @@ class TestUrlAllowlistSecurity:
 				'*.google.com',
 				'https://wiki.org',
 				'https://good.com',
-				'https://*.test.com',
+				'https://*.start.com',
 				'chrome://version',
 				'brave://*',
 			],
@@ -142,7 +142,7 @@ class TestUrlAllowlistSecurity:
 		from browser_use.browser.watchdogs.security_watchdog import SecurityWatchdog
 
 		# Test with simple root domains
-		browser_profile = BrowserProfile(allowed_domains=['example.com', 'test.org'], headless=True, user_data_dir=None)
+		browser_profile = BrowserProfile(allowed_domains=['example.com', 'start.org'], headless=True, user_data_dir=None)
 		browser_session = BrowserSession(browser_profile=browser_profile)
 		event_bus = EventBus()
 		watchdog = SecurityWatchdog(browser_session=browser_session, event_bus=event_bus)
@@ -171,7 +171,7 @@ class TestUrlAllowlistSecurity:
 
 		# Test with country-specific TLDs - these should NOT get automatic www
 		browser_profile = BrowserProfile(
-			allowed_domains=['example.co.uk', 'test.com.au', 'site.co.jp'], headless=True, user_data_dir=None
+			allowed_domains=['example.co.uk', 'start.com.au', 'site.co.jp'], headless=True, user_data_dir=None
 		)
 		browser_session = BrowserSession(browser_profile=browser_profile)
 		event_bus = EventBus()
@@ -198,7 +198,7 @@ class TestUrlAllowlistSecurity:
 		from browser_use.browser.watchdogs.security_watchdog import SecurityWatchdog
 
 		# Test with existing subdomains - should NOT get automatic www
-		browser_profile = BrowserProfile(allowed_domains=['mail.example.com', 'api.test.org'], headless=True, user_data_dir=None)
+		browser_profile = BrowserProfile(allowed_domains=['mail.example.com', 'api.start.org'], headless=True, user_data_dir=None)
 		browser_session = BrowserSession(browser_profile=browser_profile)
 		event_bus = EventBus()
 		watchdog = SecurityWatchdog(browser_session=browser_session, event_bus=event_bus)
@@ -267,14 +267,14 @@ class TestUrlAllowlistSecurity:
 
 		# Simple root domains (1 dot) - should return True
 		assert watchdog._is_root_domain('example.com') is True
-		assert watchdog._is_root_domain('test.org') is True
+		assert watchdog._is_root_domain('start.org') is True
 		assert watchdog._is_root_domain('site.net') is True
 
 		# Subdomains (more than 1 dot) - should return False
 		assert watchdog._is_root_domain('www.example.com') is False
 		assert watchdog._is_root_domain('mail.example.com') is False
 		assert watchdog._is_root_domain('example.co.uk') is False
-		assert watchdog._is_root_domain('test.com.au') is False
+		assert watchdog._is_root_domain('start.com.au') is False
 
 		# Wildcards - should return False
 		assert watchdog._is_root_domain('*.example.com') is False
@@ -298,7 +298,7 @@ class TestUrlProhibitlistSecurity:
 
 		from browser_use.browser.watchdogs.security_watchdog import SecurityWatchdog
 
-		browser_profile = BrowserProfile(prohibited_domains=['example.com', 'test.org'], headless=True, user_data_dir=None)
+		browser_profile = BrowserProfile(prohibited_domains=['example.com', 'start.org'], headless=True, user_data_dir=None)
 		browser_session = BrowserSession(browser_profile=browser_profile)
 		event_bus = EventBus()
 		watchdog = SecurityWatchdog(browser_session=browser_session, event_bus=event_bus)

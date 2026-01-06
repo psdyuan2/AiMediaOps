@@ -1,7 +1,7 @@
 """
 Simple demonstration of the CDP feature.
 
-To test this locally, follow these steps:
+To start this locally, follow these steps:
 1. Find the chrome executable file.
 2. On mac by default, the chrome is in `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
 3. Add the following argument to the shortcut:

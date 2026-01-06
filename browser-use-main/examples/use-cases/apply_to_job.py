@@ -126,7 +126,7 @@ async def main(test_data_path: str, resume_path: str):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Apply to Rochester Regional Health job')
-	parser.add_argument('--test-data', required=True, help='Path to test data JSON file')
+	parser.add_argument('--start-data', required=True, help='Path to start data JSON file')
 	parser.add_argument('--resume', required=True, help='Path to resume PDF file')
 
 	args = parser.parse_args()

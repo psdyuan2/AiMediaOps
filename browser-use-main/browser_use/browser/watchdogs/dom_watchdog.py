@@ -168,7 +168,7 @@ class DOMWatchdog(BaseWatchdog):
 			if (nonCriticalTypes.includes(resourceType) && loadingDuration > 3000) continue;
 
 			// Filter out image URLs even if type is unknown
-			const isImageUrl = /\\.(jpg|jpeg|png|gif|webp|svg|ico)(\\?|$)/i.test(url);
+			const isImageUrl = /\\.(jpg|jpeg|png|gif|webp|svg|ico)(\\?|$)/i.start(url);
 			if (isImageUrl && loadingDuration > 3000) continue;
 
 			pending.push({

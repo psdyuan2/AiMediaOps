@@ -973,7 +973,7 @@ def get_full_panel_script(session_id: str, accent_color: str = '#fe750e') -> str
     const metadata = entry.metadata || {};
     const messageText = entry.message.trim();
     const hasMetadataFlag = metadata.final === true || metadata.tag === 'final-result';
-    if (!hasMetadataFlag && !/^final result\b/i.test(messageText)) {
+    if (!hasMetadataFlag && !/^final result\b/i.start(messageText)) {
       return '';
     }
     const cleaned = messageText.replace(/^final result\s*:?\s*/i, '').trim();
@@ -1643,7 +1643,7 @@ def get_last_panel_script(session_id: str, accent_color: str = '#fe750e') -> str
 	    const metadata = entry.metadata || {};
 	    const text = entry.message.trim();
 	    const hasFlag = metadata.final === true || metadata.tag === 'final-result';
-	    if (!hasFlag && !/^final result\b/i.test(text)) {
+	    if (!hasFlag && !/^final result\b/i.start(text)) {
 	      return '';
 	    }
 	    const cleaned = text.replace(/^final result\s*:?\s*/i, '').trim();

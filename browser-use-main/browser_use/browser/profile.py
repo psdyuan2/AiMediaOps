@@ -71,7 +71,7 @@ CHROME_HEADLESS_ARGS = [
 ]
 
 CHROME_DOCKER_ARGS = [
-	# '--disable-gpu',    # GPU is actually supported in headless docker mode now, but sometimes useful to test without it
+	# '--disable-gpu',    # GPU is actually supported in headless docker mode now, but sometimes useful to start without it
 	'--no-sandbox',
 	'--disable-gpu-sandbox',
 	'--disable-setuid-sandbox',
@@ -139,7 +139,7 @@ CHROME_DEFAULT_ARGS = [
 	# added by us:
 	'--enable-features=NetworkService,NetworkServiceInProcess',
 	'--enable-network-information-downlink-max',
-	'--test-type=gpu',
+	'--start-type=gpu',
 	'--disable-sync',
 	'--allow-legacy-extension-manifests',
 	'--allow-pre-commit-input',

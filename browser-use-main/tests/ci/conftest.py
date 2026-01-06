@@ -41,10 +41,10 @@ from browser_use.sync.service import CloudSync
 @pytest.fixture(autouse=True)
 def setup_test_environment():
 	"""
-	Automatically set up test environment for all tests.
+	Automatically set up start environment for all tests.
 	"""
 
-	# Create a temporary directory for test config (but not for extensions)
+	# Create a temporary directory for start config (but not for extensions)
 	config_dir = tempfile.mkdtemp(prefix='browseruse_tests_')
 
 	original_env = {}
@@ -177,17 +177,17 @@ def cloud_sync(httpserver: HTTPServer):
 	"""
 	Create a CloudSync instance configured for testing.
 
-	This fixture creates a real CloudSync instance and sets up the test environment
+	This fixture creates a real CloudSync instance and sets up the start environment
 	to use the httpserver URLs.
 	"""
 
-	# Set up test environment
+	# Set up start environment
 	test_http_server_url = httpserver.url_for('')
 	os.environ['BROWSER_USE_CLOUD_API_URL'] = test_http_server_url
 	os.environ['BROWSER_USE_CLOUD_UI_URL'] = test_http_server_url
 	os.environ['BROWSER_USE_CLOUD_SYNC'] = 'true'
 
-	# Create CloudSync with test server URL
+	# Create CloudSync with start server URL
 	cloud_sync = CloudSync(
 		base_url=test_http_server_url,
 	)

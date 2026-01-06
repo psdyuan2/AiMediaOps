@@ -45,7 +45,7 @@ class TestCrossOriginIframeClick:
 		</html>
 		"""
 
-		# Create main page with iframe pointing to our test server
+		# Create main page with iframe pointing to our start server
 		main_html = """
 		<!DOCTYPE html>
 		<html>
@@ -53,15 +53,15 @@ class TestCrossOriginIframeClick:
 		<body>
 			<h1>Main Page</h1>
 			<button id="main-button">Main Button</button>
-			<iframe id="test-iframe" src="/iframe-content" style="width: 800px; height: 600px;"></iframe>
+			<iframe id="start-iframe" src="/iframe-content" style="width: 800px; height: 600px;"></iframe>
 		</body>
 		</html>
 		"""
 
 		# Serve both pages
-		httpserver.expect_request('/multi-target-test').respond_with_data(main_html, content_type='text/html')
+		httpserver.expect_request('/multi-target-start').respond_with_data(main_html, content_type='text/html')
 		httpserver.expect_request('/iframe-content').respond_with_data(iframe_html, content_type='text/html')
-		url = httpserver.url_for('/multi-target-test')
+		url = httpserver.url_for('/multi-target-start')
 
 		# Navigate to the page
 		await browser_session.navigate_to(url)

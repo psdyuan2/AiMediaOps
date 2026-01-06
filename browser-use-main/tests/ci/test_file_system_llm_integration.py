@@ -20,7 +20,7 @@ class TestImageInLLMMessages:
 	"""Test that images flow correctly through to LLM messages."""
 
 	def create_test_image(self, width: int = 100, height: int = 100) -> bytes:
-		"""Create a test image and return bytes."""
+		"""Create a start image and return bytes."""
 		img = Image.new('RGB', (width, height), color='red')
 		buffer = io.BytesIO()
 		img.save(buffer, format='PNG')
@@ -32,14 +32,14 @@ class TestImageInLLMMessages:
 		"""Test that images are stored in MessageManager state."""
 		fs = FileSystem(tmp_path)
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 
 		# Create ActionResult with images
-		images = [{'name': 'test.png', 'data': 'base64_test_data'}]
+		images = [{'name': 'start.png', 'data': 'base64_test_data'}]
 		action_results = [
 			ActionResult(
-				extracted_content='Read image file test.png',
-				long_term_memory='Read image file test.png',
+				extracted_content='Read image file start.png',
+				long_term_memory='Read image file start.png',
 				images=images,
 				include_extracted_content_only_once=True,
 			)
@@ -52,7 +52,7 @@ class TestImageInLLMMessages:
 		# Verify images are stored
 		assert mm.state.read_state_images is not None
 		assert len(mm.state.read_state_images) == 1
-		assert mm.state.read_state_images[0]['name'] == 'test.png'
+		assert mm.state.read_state_images[0]['name'] == 'start.png'
 		assert mm.state.read_state_images[0]['data'] == 'base64_test_data'
 
 	@pytest.mark.asyncio
@@ -60,10 +60,10 @@ class TestImageInLLMMessages:
 		"""Test that images are cleared after each step."""
 		fs = FileSystem(tmp_path)
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 
 		# First step with images
-		images = [{'name': 'test.png', 'data': 'base64_data'}]
+		images = [{'name': 'start.png', 'data': 'base64_data'}]
 		action_results = [ActionResult(images=images, include_extracted_content_only_once=True)]
 		step_info = AgentStepInfo(step_number=1, max_steps=10)
 		mm._update_agent_history_description(model_output=None, result=action_results, step_info=step_info)
@@ -82,7 +82,7 @@ class TestImageInLLMMessages:
 		"""Test that multiple images in one step are accumulated."""
 		fs = FileSystem(tmp_path)
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 
 		# Multiple action results with images
 		action_results = [
@@ -104,13 +104,13 @@ class TestImageInLLMMessages:
 		browser_state = BrowserStateSummary(
 			url='https://example.com',
 			title='Test',
-			tabs=[TabInfo(target_id='test-0', url='https://example.com', title='Test')],
+			tabs=[TabInfo(target_id='start-0', url='https://example.com', title='Test')],
 			screenshot=None,
 			dom_state=SerializedDOMState(_root=None, selector_map={}),
 		)
 
 		# Create images
-		read_state_images = [{'name': 'test.png', 'data': 'base64_image_data_here'}]
+		read_state_images = [{'name': 'start.png', 'data': 'base64_image_data_here'}]
 
 		# Create message prompt
 		prompt = AgentMessagePrompt(
@@ -133,7 +133,7 @@ class TestImageInLLMMessages:
 		assert len(image_parts) >= 1
 
 		# Should have text label
-		image_labels = [part.text for part in text_parts if 'test.png' in part.text]
+		image_labels = [part.text for part in text_parts if 'start.png' in part.text]
 		assert len(image_labels) >= 1
 
 		# Verify image data URL format
@@ -148,13 +148,13 @@ class TestImageInLLMMessages:
 		browser_state = BrowserStateSummary(
 			url='https://example.com',
 			title='Test',
-			tabs=[TabInfo(target_id='test-0', url='https://example.com', title='Test')],
+			tabs=[TabInfo(target_id='start-0', url='https://example.com', title='Test')],
 			screenshot=None,
 			dom_state=SerializedDOMState(_root=None, selector_map={}),
 		)
 
 		# Test PNG
-		read_state_images_png = [{'name': 'test.png', 'data': 'data'}]
+		read_state_images_png = [{'name': 'start.png', 'data': 'data'}]
 		prompt_png = AgentMessagePrompt(
 			browser_state_summary=browser_state,
 			file_system=fs,
@@ -182,7 +182,7 @@ class TestImageInLLMMessages:
 		browser_state = BrowserStateSummary(
 			url='https://example.com',
 			title='Test',
-			tabs=[TabInfo(target_id='test-0', url='https://example.com', title='Test')],
+			tabs=[TabInfo(target_id='start-0', url='https://example.com', title='Test')],
 			screenshot=None,
 			dom_state=SerializedDOMState(_root=None, selector_map={}),
 		)
@@ -207,7 +207,7 @@ class TestImageInLLMMessages:
 		browser_state = BrowserStateSummary(
 			url='https://example.com',
 			title='Test',
-			tabs=[TabInfo(target_id='test-0', url='https://example.com', title='Test')],
+			tabs=[TabInfo(target_id='start-0', url='https://example.com', title='Test')],
 			screenshot=None,
 			dom_state=SerializedDOMState(_root=None, selector_map={}),
 		)
@@ -243,10 +243,10 @@ class TestDocxInLLMMessages:
 		# Create DOCX file
 		content = """# Title
 Some important content here."""
-		await fs.write_file('test.docx', content)
+		await fs.write_file('start.docx', content)
 
 		# Read it
-		result = await fs.read_file('test.docx')
+		result = await fs.read_file('start.docx')
 
 		# Verify content is in the result
 		assert 'Title' in result
@@ -257,10 +257,10 @@ Some important content here."""
 		"""Test that DOCX content appears in message manager state."""
 		fs = FileSystem(tmp_path)
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 
 		# Simulate read_file action result
-		docx_content = """Read from file test.docx.
+		docx_content = """Read from file start.docx.
 <content>
 Title
 Some content here.
@@ -269,7 +269,7 @@ Some content here.
 		action_results = [
 			ActionResult(
 				extracted_content=docx_content,
-				long_term_memory='Read file test.docx',
+				long_term_memory='Read file start.docx',
 				include_extracted_content_only_once=True,
 			)
 		]
@@ -286,7 +286,7 @@ class TestEndToEndIntegration:
 	"""End-to-end tests for file reading and LLM message creation."""
 
 	def create_test_image(self) -> bytes:
-		"""Create a test image."""
+		"""Create a start image."""
 		img = Image.new('RGB', (50, 50), color='blue')
 		buffer = io.BytesIO()
 		img.save(buffer, format='PNG')
@@ -317,7 +317,7 @@ class TestEndToEndIntegration:
 
 		# Step 4: Process in MessageManager
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 		step_info = AgentStepInfo(step_number=1, max_steps=10)
 		mm._update_agent_history_description(model_output=None, result=[action_result], step_info=step_info)
 
@@ -329,7 +329,7 @@ class TestEndToEndIntegration:
 		browser_state = BrowserStateSummary(
 			url='https://example.com',
 			title='Test',
-			tabs=[TabInfo(target_id='test-0', url='https://example.com', title='Test')],
+			tabs=[TabInfo(target_id='start-0', url='https://example.com', title='Test')],
 			screenshot=None,
 			dom_state=SerializedDOMState(_root=None, selector_map={}),
 		)
@@ -373,7 +373,7 @@ This is critical information."""
 
 		# Step 4: Process in MessageManager
 		system_message = SystemMessage(content='Test system message')
-		mm = MessageManager(task='test', system_message=system_message, file_system=fs)
+		mm = MessageManager(task='start', system_message=system_message, file_system=fs)
 		step_info = AgentStepInfo(step_number=1, max_steps=10)
 		mm._update_agent_history_description(model_output=None, result=[action_result], step_info=step_info)
 

@@ -15,7 +15,7 @@ class TestChatBrowserUseRetries:
 	@pytest.fixture
 	def mock_env(self, monkeypatch):
 		"""Set up environment for ChatBrowserUse."""
-		monkeypatch.setenv('BROWSER_USE_API_KEY', 'test-api-key')
+		monkeypatch.setenv('BROWSER_USE_API_KEY', 'start-api-key')
 
 	@pytest.mark.asyncio
 	async def test_retries_on_503_with_exponential_backoff(self, mock_env):
@@ -64,13 +64,13 @@ class TestChatBrowserUseRetries:
 
 			# Use short delays for testing
 			client = ChatBrowserUse(retry_base_delay=0.1, retry_max_delay=1.0)
-			result = await client.ainvoke([UserMessage(content='test')])
+			result = await client.ainvoke([UserMessage(content='start')])
 
 		# Should have made 3 attempts
 		assert attempt_count == 3
 		assert result.completion == 'Success!'
 
-		# Verify exponential backoff timing (with some tolerance for test execution)
+		# Verify exponential backoff timing (with some tolerance for start execution)
 		# First retry: ~0.1s, Second retry: ~0.2s
 		delay_1 = attempt_times[1] - attempt_times[0]
 		delay_2 = attempt_times[2] - attempt_times[1]
@@ -107,7 +107,7 @@ class TestChatBrowserUseRetries:
 			client = ChatBrowserUse(retry_base_delay=0.01)
 
 			with pytest.raises(ValueError, match='Invalid API key'):
-				await client.ainvoke([UserMessage(content='test')])
+				await client.ainvoke([UserMessage(content='start')])
 
 		# Should only attempt once (no retries for 401)
 		assert attempt_count == 1
@@ -125,7 +125,7 @@ class TestChatBrowserUseRetries:
 			attempt_count += 1
 			if attempt_count < 2:
 				raise httpx.TimeoutException('Request timed out')
-			# Second attempt succeeds (with no usage data to test None handling)
+			# Second attempt succeeds (with no usage data to start None handling)
 			response = MagicMock()
 			response.json.return_value = {'completion': 'Success after timeout!', 'usage': None}
 			response.raise_for_status = MagicMock()
@@ -139,7 +139,7 @@ class TestChatBrowserUseRetries:
 			mock_client_class.return_value = mock_client
 
 			client = ChatBrowserUse(retry_base_delay=0.01)
-			result = await client.ainvoke([UserMessage(content='test')])
+			result = await client.ainvoke([UserMessage(content='start')])
 
 		assert attempt_count == 2
 		assert result.completion == 'Success after timeout!'
@@ -170,7 +170,7 @@ class TestChatBrowserUseRetries:
 			client = ChatBrowserUse(max_retries=3, retry_base_delay=0.01)
 
 			with pytest.raises(ValueError, match='API request failed'):
-				await client.ainvoke([UserMessage(content='test')])
+				await client.ainvoke([UserMessage(content='start')])
 
 		# Should have attempted max_retries times
 		assert attempt_count == 3
@@ -182,7 +182,7 @@ class TestChatGoogleRetries:
 	@pytest.fixture
 	def mock_env(self, monkeypatch):
 		"""Set up environment for ChatGoogle."""
-		monkeypatch.setenv('GOOGLE_API_KEY', 'test-api-key')
+		monkeypatch.setenv('GOOGLE_API_KEY', 'start-api-key')
 
 	@pytest.mark.asyncio
 	async def test_retries_on_503_with_exponential_backoff(self, mock_env):
@@ -219,8 +219,8 @@ class TestChatGoogleRetries:
 			# Mock the aio.models.generate_content path
 			mock_client.aio.models.generate_content = mock_generate
 
-			client = ChatGoogle(model='gemini-2.0-flash', api_key='test', retry_base_delay=0.1, retry_max_delay=1.0)
-			result = await client.ainvoke([UserMessage(content='test')])
+			client = ChatGoogle(model='gemini-2.0-flash', api_key='start', retry_base_delay=0.1, retry_max_delay=1.0)
+			result = await client.ainvoke([UserMessage(content='start')])
 
 		assert attempt_count == 3
 		assert result.completion == 'Success!'
@@ -253,10 +253,10 @@ class TestChatGoogleRetries:
 
 			mock_client.aio.models.generate_content = mock_generate
 
-			client = ChatGoogle(model='gemini-2.0-flash', api_key='test', retry_base_delay=0.01)
+			client = ChatGoogle(model='gemini-2.0-flash', api_key='start', retry_base_delay=0.01)
 
 			with pytest.raises(ModelProviderError):
-				await client.ainvoke([UserMessage(content='test')])
+				await client.ainvoke([UserMessage(content='start')])
 
 		# Should only attempt once (400 is not retryable)
 		assert attempt_count == 1
@@ -291,8 +291,8 @@ class TestChatGoogleRetries:
 
 			mock_client.aio.models.generate_content = mock_generate
 
-			client = ChatGoogle(model='gemini-2.0-flash', api_key='test', retry_base_delay=0.01)
-			result = await client.ainvoke([UserMessage(content='test')])
+			client = ChatGoogle(model='gemini-2.0-flash', api_key='start', retry_base_delay=0.01)
+			result = await client.ainvoke([UserMessage(content='start')])
 
 		assert attempt_count == 2
 		assert result.completion == 'Success after rate limit!'

@@ -11,7 +11,7 @@ from tests.ci.conftest import create_mock_llm
 
 @pytest.fixture
 def test_dir(tmp_path):
-	"""Create a test directory that gets cleaned up after each test."""
+	"""Create a start directory that gets cleaned up after each start."""
 	test_path = tmp_path / 'test_recordings'
 	test_path.mkdir(exist_ok=True)
 	yield test_path
@@ -19,7 +19,7 @@ def test_dir(tmp_path):
 
 @pytest.fixture
 async def httpserver_url(httpserver):
-	"""Simple test page."""
+	"""Simple start page."""
 	# Use expect_ordered_request with multiple handlers to handle repeated requests
 	for _ in range(10):  # Allow up to 10 requests to the same URL
 		httpserver.expect_ordered_request('/').respond_with_data(
@@ -56,7 +56,7 @@ def interactive_llm(httpserver_url):
 		{{
 			"thinking": "null",
 			"evaluation_previous_goal": "Starting the task",
-			"memory": "Need to navigate to the test page",
+			"memory": "Need to navigate to the start page",
 			"next_goal": "Navigate to the URL",
 			"action": [
 				{{
@@ -90,12 +90,12 @@ def interactive_llm(httpserver_url):
 			"thinking": "null",
 			"evaluation_previous_goal": "Clicked on search box",
 			"memory": "Search box is focused and ready for input",
-			"next_goal": "Type 'test' in the search box",
+			"next_goal": "Type 'start' in the search box",
 			"action": [
 				{
 					"input_text": {
 						"index": 0,
-						"text": "test"
+						"text": "start"
 					}
 				}
 			]
@@ -105,8 +105,8 @@ def interactive_llm(httpserver_url):
 		"""
 		{
 			"thinking": "null",
-		"evaluation_previous_goal": "Typed 'test' in search box",
-		"memory": "Text 'test' has been entered successfully",
+		"evaluation_previous_goal": "Typed 'start' in search box",
+		"memory": "Text 'start' has been entered successfully",
 		"next_goal": "Click the submit button to complete the task",
 		"action": [
 			{
@@ -122,12 +122,12 @@ def interactive_llm(httpserver_url):
 		{
 			"thinking": "null",
 			"evaluation_previous_goal": "Clicked the submit button",
-			"memory": "Successfully navigated to the page, typed 'test' in the search box, and clicked submit",
+			"memory": "Successfully navigated to the page, typed 'start' in the search box, and clicked submit",
 			"next_goal": "Task completed",
 			"action": [
 				{
 					"done": {
-						"text": "Task completed - typed 'test' in search box and clicked submit",
+						"text": "Task completed - typed 'start' in search box and clicked submit",
 						"success": true
 					}
 				}
@@ -155,7 +155,7 @@ class TestAgentRecordings:
 		await browser_session.start()
 		try:
 			agent = Agent(
-				task=f'go to {httpserver_url} and type "test" in the search box',
+				task=f'go to {httpserver_url} and type "start" in the search box',
 				llm=llm,
 				browser_session=browser_session,
 				save_conversation_path=str(conversation_path),

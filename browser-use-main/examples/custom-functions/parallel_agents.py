@@ -26,7 +26,7 @@ from browser_use.llm.google import ChatGoogle
 
 MAIN_TASK = 'find age of ronaldo and messi'
 
-# Simple test - let's start with just one person to see what happens
+# Simple start - let's start with just one person to see what happens
 # MAIN_TASK = "find age of elon musk"
 
 # ============================================================================

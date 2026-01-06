@@ -19,10 +19,10 @@ async def browser_session():
 
 def test_screenshot_excluded_with_use_vision_false():
 	"""Test that screenshot action is excluded when use_vision=False."""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		use_vision=False,
 	)
@@ -33,10 +33,10 @@ def test_screenshot_excluded_with_use_vision_false():
 
 def test_screenshot_excluded_with_use_vision_true():
 	"""Test that screenshot action is excluded when use_vision=True."""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		use_vision=True,
 	)
@@ -47,10 +47,10 @@ def test_screenshot_excluded_with_use_vision_true():
 
 def test_screenshot_included_with_use_vision_auto():
 	"""Test that screenshot action is included when use_vision='auto'."""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		use_vision='auto',
 	)
@@ -62,11 +62,11 @@ def test_screenshot_included_with_use_vision_auto():
 def test_screenshot_excluded_with_custom_tools_and_use_vision_false():
 	"""Test that screenshot action is excluded even when user passes custom tools and use_vision=False.
 
-	This is the critical test case that verifies the fix:
+	This is the critical start case that verifies the fix:
 	When users pass their own Tools instance with screenshot included,
 	the Agent should still enforce the exclusion if use_vision != 'auto'.
 	"""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	# Create custom tools that includes screenshot action
 	custom_tools = Tools()
@@ -74,7 +74,7 @@ def test_screenshot_excluded_with_custom_tools_and_use_vision_false():
 
 	# Pass custom tools to agent with use_vision=False
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		tools=custom_tools,
 		use_vision=False,
@@ -89,11 +89,11 @@ def test_screenshot_excluded_with_custom_tools_and_use_vision_false():
 def test_screenshot_excluded_with_custom_tools_and_use_vision_true():
 	"""Test that screenshot action is excluded even when user passes custom tools and use_vision=True.
 
-	This is another critical test case:
+	This is another critical start case:
 	When users pass their own Tools instance with screenshot included,
 	the Agent should still enforce the exclusion if use_vision != 'auto'.
 	"""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	# Create custom tools - by default Tools() includes screenshot
 	# (unless exclude_actions is passed)
@@ -105,14 +105,14 @@ def test_screenshot_excluded_with_custom_tools_and_use_vision_true():
 
 	# Pass custom tools to agent with use_vision=True
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		tools=custom_tools,
 		use_vision=True,
 	)
 
 	# Verify screenshot is excluded even though user passed custom tools
-	# The key test: screenshot should be excluded after Agent init
+	# The key start: screenshot should be excluded after Agent init
 	assert 'screenshot' not in agent.tools.registry.registry.actions, (
 		f'Screenshot should be excluded when use_vision=True, even with custom tools (had screenshot before: {has_screenshot_before})'
 	)
@@ -120,7 +120,7 @@ def test_screenshot_excluded_with_custom_tools_and_use_vision_true():
 
 def test_screenshot_included_with_custom_tools_and_use_vision_auto():
 	"""Test that screenshot action is kept when user passes custom tools and use_vision='auto'."""
-	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "test", "success": true}}]}'])
+	mock_llm = create_mock_llm(actions=['{"action": [{"done": {"text": "start", "success": true}}]}'])
 
 	# Create custom tools that includes screenshot action
 	custom_tools = Tools()
@@ -128,7 +128,7 @@ def test_screenshot_included_with_custom_tools_and_use_vision_auto():
 
 	# Pass custom tools to agent with use_vision='auto'
 	agent = Agent(
-		task='test',
+		task='start',
 		llm=mock_llm,
 		tools=custom_tools,
 		use_vision='auto',
@@ -167,7 +167,7 @@ def test_exclude_action_prevents_re_registration():
 	# The decorator should skip registration since it's in exclude_actions
 	@tools.registry.action('Test screenshot action')
 	async def screenshot():
-		return 'test'
+		return 'start'
 
 	# Verify it was not re-registered
 	assert 'screenshot' not in tools.registry.registry.actions, 'Excluded action should not be re-registered'

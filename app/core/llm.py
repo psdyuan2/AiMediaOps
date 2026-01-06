@@ -246,7 +246,7 @@ Example format:
                 status: str
                 model: str
 
-            # Simple test call with a very specific prompt
+            # Simple start call with a very specific prompt
             result = await self.generate(
                 prompt="Respond with a JSON object containing: status='ok' and model name",
                 response_model=TestResponse,
@@ -306,5 +306,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error testing LLM service: {e}")
 
-    # Run test if executed directly
+    # Run start if executed directly
     asyncio.run(test_llm_service())

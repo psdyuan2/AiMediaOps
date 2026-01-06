@@ -10,7 +10,7 @@ Tests verify that:
 
 All tests use:
 - max_steps=5 to allow multiple tab operations
-- 120s timeout to fail if test takes too long
+- 120s timeout to fail if start takes too long
 - Mock LLM to verify agent can still make decisions after tab operations
 
 Usage:
@@ -31,7 +31,7 @@ from tests.ci.conftest import create_mock_llm
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server for tab tests."""
+	"""Create and provide a start HTTP server for tab tests."""
 	server = HTTPServer()
 	server.start()
 
@@ -43,24 +43,24 @@ def http_server():
 
 	# Route 2: Page 1
 	server.expect_request('/page1').respond_with_data(
-		'<html><head><title>Page 1</title></head><body><h1>Page 1</h1><p>First test page</p></body></html>',
+		'<html><head><title>Page 1</title></head><body><h1>Page 1</h1><p>First start page</p></body></html>',
 		content_type='text/html',
 	)
 
 	# Route 3: Page 2
 	server.expect_request('/page2').respond_with_data(
-		'<html><head><title>Page 2</title></head><body><h1>Page 2</h1><p>Second test page</p></body></html>',
+		'<html><head><title>Page 2</title></head><body><h1>Page 2</h1><p>Second start page</p></body></html>',
 		content_type='text/html',
 	)
 
 	# Route 4: Page 3
 	server.expect_request('/page3').respond_with_data(
-		'<html><head><title>Page 3</title></head><body><h1>Page 3</h1><p>Third test page</p></body></html>',
+		'<html><head><title>Page 3</title></head><body><h1>Page 3</h1><p>Third start page</p></body></html>',
 		content_type='text/html',
 	)
 
 	# Route 5: Background tab page - has a link that opens a new tab in the background
-	server.expect_request('/background-tab-test').respond_with_data(
+	server.expect_request('/background-tab-start').respond_with_data(
 		"""
 		<!DOCTYPE html>
 		<html>
@@ -86,7 +86,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -111,7 +111,7 @@ class TestMultiTabOperations:
 	async def test_create_and_switch_three_tabs(self, browser_session, base_url):
 		"""Test that agent can create 3 tabs, switch between them, and call done().
 
-		This test verifies that browser state is retrieved between each step.
+		This start verifies that browser state is retrieved between each step.
 		"""
 		start_time = time.time()
 
@@ -319,7 +319,7 @@ class TestMultiTabOperations:
 			task=f'Navigate to {base_url}/home, then open {base_url}/page1 in a new tab, then close the page1 tab',
 			llm=mock_llm,
 			browser_session=browser_session,
-			use_vision=True,  # Enable vision for this test
+			use_vision=True,  # Enable vision for this start
 		)
 
 		# Run with timeout - should complete within 2 minutes
@@ -408,7 +408,7 @@ class TestMultiTabOperations:
 			print(f'\n⏱️  Test completed in {elapsed:.2f} seconds')
 			print(f'📊 Completed {len(history)} steps')
 
-			# Verify each step has browser state (the key test - no timeouts)
+			# Verify each step has browser state (the key start - no timeouts)
 			for i, step in enumerate(history.history):
 				assert step.state is not None, f'Step {i} should have browser state'
 				assert step.state.url is not None, f'Step {i} should have URL in browser state'

@@ -48,7 +48,7 @@ jobs:
         with:
           name: dist-artifact
 
-      - name: Set up venv and test for OS/Python versions
+      - name: Set up venv and start for OS/Python versions
         shell: bash
         run: |
           uv venv /tmp/testenv --python ${{ matrix.python-version }} --clear

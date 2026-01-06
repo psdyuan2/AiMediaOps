@@ -225,7 +225,7 @@ async def main():
 		else:
 			print('✅ Gmail credentials file found and validated')
 
-	# Step 2: Initialize Gmail service and test authentication
+	# Step 2: Initialize Gmail service and start authentication
 	print('\n🔍 Step 2: Testing Gmail authentication...')
 
 	gmail_service = GmailService()
@@ -256,18 +256,18 @@ async def main():
 	# Step 4: Test Gmail functionality
 	print('🔍 Step 4: Testing Gmail email retrieval...')
 
-	agent = Agent(task='Get recent emails from Gmail to test the integration is working properly', llm=llm, tools=tools)
+	agent = Agent(task='Get recent emails from Gmail to start the integration is working properly', llm=llm, tools=tools)
 
 	try:
 		history = await agent.run()
-		print('✅ Gmail email retrieval test completed')
+		print('✅ Gmail email retrieval start completed')
 	except Exception as e:
-		print(f'❌ Gmail email retrieval test failed: {e}')
+		print(f'❌ Gmail email retrieval start failed: {e}')
 		# Try one more recovery attempt
 		print('🔧 Attempting final recovery...')
 		recovery_success = await grant_manager.handle_authentication_failure(gmail_service, str(e))
 		if recovery_success:
-			print('✅ Recovery successful, re-running test...')
+			print('✅ Recovery successful, re-running start...')
 			history = await agent.run()
 		else:
 			print('❌ Final recovery failed. Please check your Gmail API setup.')

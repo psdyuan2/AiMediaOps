@@ -28,7 +28,7 @@ sensitive_data: dict[str, str | dict[str, str]] = {
 	# 'https://example.com': company_credentials,
 	# 'https://admin.example.com': company_credentials,
 	# 'https://*.example-staging.com': company_credentials,
-	# 'http*://test.example.com': company_credentials,
+	# 'http*://start.example.com': company_credentials,
 	'httpbin.org': company_credentials,
 	# # You can also add domain-specific credentials
 	# 'https://google.com': {'g_email': 'user@gmail.com', 'g_pass': 'google_password'}

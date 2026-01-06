@@ -1,7 +1,7 @@
 """
-Debug test for iframe scrolling issue where DOM tree only shows top elements after scrolling.
+Debug start for iframe scrolling issue where DOM tree only shows top elements after scrolling.
 
-This test verifies that after scrolling inside an iframe, the selector_map correctly
+This start verifies that after scrolling inside an iframe, the selector_map correctly
 contains lower input elements like City, State, Zip Code, etc.
 """
 
@@ -24,18 +24,18 @@ from tests.ci.conftest import create_mock_llm
 async def debug_iframe_scrolling():
 	"""Debug iframe scrolling and DOM visibility issue."""
 
-	print('Starting iframe scrolling debug test...')
+	print('Starting iframe scrolling debug start...')
 
 	# Create the sequence of actions for the mock LLM
 	# We need to format these as the LLM would return them
 	actions = [
-		# First action: Navigate to the test URL
+		# First action: Navigate to the start URL
 		"""
 		{
-			"thinking": "Navigating to the iframe test page",
+			"thinking": "Navigating to the iframe start page",
 			"evaluation_previous_goal": null,
-			"memory": "Starting test",
-			"next_goal": "Navigate to the iframe test page",
+			"memory": "Starting start",
+			"next_goal": "Navigate to the iframe start page",
 			"action": [
 				{
 					"navigate": {
@@ -49,7 +49,7 @@ async def debug_iframe_scrolling():
 		# Second action: Input text in the first name field (to verify we can interact)
 		"""
 		{
-			"thinking": "Inputting text in the first name field to test interaction",
+			"thinking": "Inputting text in the first name field to start interaction",
 			"evaluation_previous_goal": "Successfully navigated to the page",
 			"memory": "Page loaded with nested iframes",
 			"next_goal": "Type text in the first name field",
@@ -121,7 +121,7 @@ async def debug_iframe_scrolling():
 
 		# Create an agent with the mock LLM
 		agent = Agent(
-			task='Navigate to the iframe test page and scroll inside the iframe',
+			task='Navigate to the iframe start page and scroll inside the iframe',
 			llm=mock_llm,
 			browser_session=browser_session,
 		)
@@ -295,5 +295,5 @@ async def debug_iframe_scrolling():
 
 
 if __name__ == '__main__':
-	# Run the debug test
+	# Run the debug start
 	asyncio.run(debug_iframe_scrolling())

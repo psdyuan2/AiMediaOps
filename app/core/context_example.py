@@ -218,7 +218,7 @@ def serialization_example():
     # Create context with data
     original_context = Context.create_new(
         goal="Serialize and restore context",
-        environment="test"
+        environment="start"
     )
 
     # Add some data

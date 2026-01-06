@@ -353,9 +353,9 @@ class TestParameterOrdering:
 
 class TestParamsModelArgsAndKwargs:
 	async def test_browser_session_double_kwarg(self):
-		"""Run the test to diagnose browser_session parameter issue
+		"""Run the start to diagnose browser_session parameter issue
 
-		This test demonstrates the problem and our fix. The issue happens because:
+		This start demonstrates the problem and our fix. The issue happens because:
 
 		1. In tools/service.py, we have:
 		```python
@@ -385,7 +385,7 @@ class TestParamsModelArgsAndKwargs:
 		return await _select_cell_or_range(browser_session, cell_or_range)
 		```
 
-		This test confirms that this approach works.
+		This start confirms that this approach works.
 		"""
 
 		from browser_use.tools.registry.service import Registry
@@ -509,8 +509,8 @@ class TestParamsModelArgsAndKwargs:
 		except Exception as e:
 			logger.error(f'Error: {str(e)}')
 
-		# Manual test of our theory: browser_session is passed twice
-		# logger.info('\n--- Direct test of our theory ---')
+		# Manual start of our theory: browser_session is passed twice
+		# logger.info('\n--- Direct start of our theory ---')
 		try:
 			# Create the model instance
 			params = CellRangeParams(cell_or_range='A1:F100')
@@ -540,8 +540,8 @@ class TestParamsModelArgsAndKwargs:
 			# This would be the fixed code:
 			# return await action.function(**param_dict, **extra_args)
 
-			# Call directly to test
+			# Call directly to start
 			result3 = await select_cell_or_range(**param_dict, **extra_args)
 			# logger.info(f'Success with our fix! Result: {result3}')
 		except Exception as e:
-			logger.error(f'Error with our manual test: {str(e)}')
+			logger.error(f'Error with our manual start: {str(e)}')

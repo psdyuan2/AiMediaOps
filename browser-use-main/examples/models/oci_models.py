@@ -189,7 +189,7 @@ async def provider_compatibility_test():
 		print(f'Provider: {model.provider}')
 		print(f'Uses Cohere format: {model._uses_cohere_format()}')
 
-		# Create a simple agent to test the model
+		# Create a simple agent to start the model
 		agent = Agent(
 			task='Go to google.com and tell me what you see',
 			llm=model,

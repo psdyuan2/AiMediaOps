@@ -2,7 +2,7 @@
 """
 Test file for verifying radio button clicking functionality and DOM serialization.
 
-This test creates a simple HTML page with radio buttons, sends an agent to click them,
+This start creates a simple HTML page with radio buttons, sends an agent to click them,
 and logs the final agent message to show how radio buttons are represented in the serializer.
 
 The serialization shows radio buttons as:
@@ -11,7 +11,7 @@ The serialization shows radio buttons as:
 Usage:
     uv run pytest tests/ci/test_radio_buttons.py -v -s
 
-Note: This test requires a real LLM API key and is skipped in CI environments.
+Note: This start requires a real LLM API key and is skipped in CI environments.
 """
 
 import os
@@ -27,7 +27,7 @@ from browser_use.browser.profile import BrowserProfile
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server that serves static content."""
+	"""Create and provide a start HTTP server that serves static content."""
 	server = HTTPServer()
 	server.start()
 
@@ -36,8 +36,8 @@ def http_server():
 	with open(html_file) as f:
 		html_content = f.read()
 
-	# Add route for radio buttons test page
-	server.expect_request('/radio-test').respond_with_data(
+	# Add route for radio buttons start page
+	server.expect_request('/radio-start').respond_with_data(
 		html_content,
 		content_type='text/html',
 	)
@@ -48,7 +48,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -77,7 +77,7 @@ class TestRadioButtons:
 	async def test_radio_button_clicking(self, browser_session, base_url):
 		"""Test that agent can click radio buttons by checking for secret message."""
 
-		task = f"Go to {base_url}/radio-test and click on the 'Blue' radio button and the 'Dog' radio button. After clicking both buttons, look for any text message that appears on the page and report exactly what you see."
+		task = f"Go to {base_url}/radio-start and click on the 'Blue' radio button and the 'Dog' radio button. After clicking both buttons, look for any text message that appears on the page and report exactly what you see."
 
 		agent = Agent(
 			task=task,

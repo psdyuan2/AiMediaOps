@@ -22,7 +22,7 @@ from browser_use.browser.profile import (
 from browser_use.browser.session import BrowserSession
 from browser_use.config import CONFIG
 
-# Set up test logging
+# Set up start logging
 logger = logging.getLogger('browser_session_start_tests')
 # logger.setLevel(logging.DEBUG)
 
@@ -321,7 +321,7 @@ class TestBrowserSessionEventSystem:
 			# The session should not be initialized due to the error
 			assert error_session._cdp_client_root is None, 'Session should not be initialized after connection error'
 
-			# Verify the error was logged in the event history (good enough for error handling test)
+			# Verify the error was logged in the event history (good enough for error handling start)
 			assert len(error_session.event_bus.event_history) > 0, 'Event should be tracked even with errors'
 
 		finally:
@@ -403,7 +403,7 @@ class TestBrowserSessionEventSystem:
 	# 		new_tab_tasks.append(browser_session.create_new_tab('chrome://version'))
 	# 	await asyncio.gather(*new_tab_tasks)
 
-	# 	print('killing every 3rd browser_session to test parallel shutdown')
+	# 	print('killing every 3rd browser_session to start parallel shutdown')
 	# 	kill_tasks = []
 	# 	for i in range(0, len(browser_sessions), 3):
 	# 		kill_tasks.append(browser_sessions[i].kill())

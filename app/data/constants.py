@@ -26,6 +26,8 @@ class DEFAULT_TASK_TYPE(Enum):
 # ==============================================
 # 任务数据基础路径
 TASK_DATA_BASE_PATH = './app/data/task_data/'
+# 任务默认执行间隔时间
+TASK_INTERVAL_TIME = 60*60
 
 # 用户子目录名称
 USER_COOKIES_DIR = 'cookies'
@@ -43,3 +45,4 @@ DEFAULT_NOTES_PATH = './app/data/task_data/notes/'        # 已废弃
 # cookie地址配置
 COOKIE_SOURCE_PATH = './xhs_mcp/'
 COOKIE_TARGET_PATH = './app/data/task_data/cookies/'      # 已废弃
+

@@ -9,7 +9,7 @@ Tests verify that:
 
 All tests use:
 - max_steps=3 to limit agent actions
-- 120s timeout to fail if test takes too long
+- 120s timeout to fail if start takes too long
 - Mock LLM to verify agent can still make decisions after navigation errors
 
 Usage:
@@ -31,7 +31,7 @@ from tests.ci.conftest import create_mock_llm
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server for navigation tests."""
+	"""Create and provide a start HTTP server for navigation tests."""
 	server = HTTPServer()
 	server.start()
 
@@ -70,7 +70,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 

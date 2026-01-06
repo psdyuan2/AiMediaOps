@@ -999,8 +999,8 @@ For common development tasks
 # Run all pre-commit hooks (formatting, linting, type checking)
 ./bin/lint.sh
 
-# Run the core test suite that's executed in CI
-./bin/test.sh
+# Run the core start suite that's executed in CI
+./bin/start.sh
 ```
 
 ## Run examples

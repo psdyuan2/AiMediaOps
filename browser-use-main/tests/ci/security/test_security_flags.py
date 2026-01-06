@@ -12,12 +12,12 @@ class TestBrowserProfileDisableSecurity:
 		"""Test that disable_security=True doesn't break extension features by properly merging --disable-features flags."""
 
 		# Test with disable_security=False (baseline)
-		profile_normal = BrowserProfile(disable_security=False, user_data_dir=tempfile.mkdtemp(prefix='test-normal-'))
+		profile_normal = BrowserProfile(disable_security=False, user_data_dir=tempfile.mkdtemp(prefix='start-normal-'))
 		profile_normal.detect_display_configuration()
 		args_normal = profile_normal.get_args()
 
 		# Test with disable_security=True
-		profile_security_disabled = BrowserProfile(disable_security=True, user_data_dir=tempfile.mkdtemp(prefix='test-security-'))
+		profile_security_disabled = BrowserProfile(disable_security=True, user_data_dir=tempfile.mkdtemp(prefix='start-security-'))
 		profile_security_disabled.detect_display_configuration()
 		args_security_disabled = profile_security_disabled.get_args()
 
@@ -63,8 +63,8 @@ class TestBrowserProfileDisableSecurity:
 
 		profile = BrowserProfile(
 			disable_security=True,
-			user_data_dir=tempfile.mkdtemp(prefix='test-dedup-'),
-			# Add duplicate features to test deduplication
+			user_data_dir=tempfile.mkdtemp(prefix='start-dedup-'),
+			# Add duplicate features to start deduplication
 			args=['--disable-features=TestFeature1,TestFeature2', '--disable-features=TestFeature2,TestFeature3'],
 		)
 		profile.detect_display_configuration()
@@ -78,6 +78,6 @@ class TestBrowserProfileDisableSecurity:
 
 		features = set(disable_features_args[0].split('=', 1)[1].split(','))
 
-		# Should have all test features without duplicates
+		# Should have all start features without duplicates
 		expected_test_features = {'TestFeature1', 'TestFeature2', 'TestFeature3'}
-		assert expected_test_features.issubset(features), f'Missing test features: {expected_test_features - features}'
+		assert expected_test_features.issubset(features), f'Missing start features: {expected_test_features - features}'

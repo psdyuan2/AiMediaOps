@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-# test if traceloop is installed
+# start if traceloop is installed
 try:
 	from traceloop.sdk import Traceloop  # type: ignore
 except ImportError:

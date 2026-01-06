@@ -33,7 +33,7 @@ def temp_config_dir(monkeypatch):
 @pytest.fixture
 def mock_auth_config(temp_config_dir):
 	"""Create a mock auth config with valid token."""
-	auth_config = CloudAuthConfig(api_token='test-token', user_id='test-user-id', authorized_at=None)
+	auth_config = CloudAuthConfig(api_token='start-token', user_id='start-user-id', authorized_at=None)
 	auth_config.save_to_file()
 	return auth_config
 
@@ -44,15 +44,15 @@ class TestCloudBrowserClient:
 	async def test_create_browser_success(self, mock_auth_config, monkeypatch):
 		"""Test successful cloud browser creation."""
 
-		# Clear environment variable so test uses mock_auth_config
+		# Clear environment variable so start uses mock_auth_config
 		monkeypatch.delenv('BROWSER_USE_API_KEY', raising=False)
 
 		# Mock response data matching the API
 		mock_response_data = {
-			'id': 'test-browser-id',
+			'id': 'start-browser-id',
 			'status': 'active',
 			'liveUrl': 'https://live.browser-use.com?wss=test',
-			'cdpUrl': 'wss://test.proxy.daytona.works',
+			'cdpUrl': 'wss://start.proxy.daytona.works',
 			'timeoutAt': '2025-09-17T04:35:36.049892',
 			'startedAt': '2025-09-17T03:35:36.049974',
 			'finishedAt': None,
@@ -74,15 +74,15 @@ class TestCloudBrowserClient:
 
 			result = await client.create_browser(CreateBrowserRequest())
 
-			assert result.id == 'test-browser-id'
+			assert result.id == 'start-browser-id'
 			assert result.status == 'active'
-			assert result.cdpUrl == 'wss://test.proxy.daytona.works'
+			assert result.cdpUrl == 'wss://start.proxy.daytona.works'
 
 			# Verify auth headers were included
 			mock_client.post.assert_called_once()
 			call_args = mock_client.post.call_args
 			assert 'X-Browser-Use-API-Key' in call_args.kwargs['headers']
-			assert call_args.kwargs['headers']['X-Browser-Use-API-Key'] == 'test-token'
+			assert call_args.kwargs['headers']['X-Browser-Use-API-Key'] == 'start-token'
 
 	async def test_create_browser_auth_error(self, temp_config_dir, monkeypatch):
 		"""Test cloud browser creation with auth error."""
@@ -100,7 +100,7 @@ class TestCloudBrowserClient:
 	async def test_create_browser_http_401(self, mock_auth_config, monkeypatch):
 		"""Test cloud browser creation with HTTP 401 response."""
 
-		# Clear environment variable so test uses mock_auth_config
+		# Clear environment variable so start uses mock_auth_config
 		monkeypatch.delenv('BROWSER_USE_API_KEY', raising=False)
 
 		with patch('httpx.AsyncClient') as mock_client_class:
@@ -124,14 +124,14 @@ class TestCloudBrowserClient:
 		"""Test cloud browser creation using BROWSER_USE_API_KEY environment variable."""
 
 		# Set environment variable
-		monkeypatch.setenv('BROWSER_USE_API_KEY', 'env-test-token')
+		monkeypatch.setenv('BROWSER_USE_API_KEY', 'env-start-token')
 
 		# Mock response data matching the API
 		mock_response_data = {
-			'id': 'test-browser-id',
+			'id': 'start-browser-id',
 			'status': 'active',
 			'liveUrl': 'https://live.browser-use.com?wss=test',
-			'cdpUrl': 'wss://test.proxy.daytona.works',
+			'cdpUrl': 'wss://start.proxy.daytona.works',
 			'timeoutAt': '2025-09-17T04:35:36.049892',
 			'startedAt': '2025-09-17T03:35:36.049974',
 			'finishedAt': None,
@@ -152,28 +152,28 @@ class TestCloudBrowserClient:
 
 			result = await client.create_browser(CreateBrowserRequest())
 
-			assert result.id == 'test-browser-id'
+			assert result.id == 'start-browser-id'
 			assert result.status == 'active'
-			assert result.cdpUrl == 'wss://test.proxy.daytona.works'
+			assert result.cdpUrl == 'wss://start.proxy.daytona.works'
 
 			# Verify environment variable was used
 			mock_client.post.assert_called_once()
 			call_args = mock_client.post.call_args
 			assert 'X-Browser-Use-API-Key' in call_args.kwargs['headers']
-			assert call_args.kwargs['headers']['X-Browser-Use-API-Key'] == 'env-test-token'
+			assert call_args.kwargs['headers']['X-Browser-Use-API-Key'] == 'env-start-token'
 
 	async def test_stop_browser_success(self, mock_auth_config, monkeypatch):
 		"""Test successful cloud browser session stop."""
 
-		# Clear environment variable so test uses mock_auth_config
+		# Clear environment variable so start uses mock_auth_config
 		monkeypatch.delenv('BROWSER_USE_API_KEY', raising=False)
 
 		# Mock response data for stop
 		mock_response_data = {
-			'id': 'test-browser-id',
+			'id': 'start-browser-id',
 			'status': 'stopped',
 			'liveUrl': 'https://live.browser-use.com?wss=test',
-			'cdpUrl': 'wss://test.proxy.daytona.works',
+			'cdpUrl': 'wss://start.proxy.daytona.works',
 			'timeoutAt': '2025-09-17T04:35:36.049892',
 			'startedAt': '2025-09-17T03:35:36.049974',
 			'finishedAt': '2025-09-17T04:35:36.049892',
@@ -191,25 +191,25 @@ class TestCloudBrowserClient:
 
 			client = CloudBrowserClient()
 			client.client = mock_client
-			client.current_session_id = 'test-browser-id'
+			client.current_session_id = 'start-browser-id'
 
 			result = await client.stop_browser()
 
-			assert result.id == 'test-browser-id'
+			assert result.id == 'start-browser-id'
 			assert result.status == 'stopped'
 			assert result.finishedAt is not None
 
 			# Verify correct API call
 			mock_client.patch.assert_called_once()
 			call_args = mock_client.patch.call_args
-			assert 'test-browser-id' in call_args.args[0]  # URL contains session ID
+			assert 'start-browser-id' in call_args.args[0]  # URL contains session ID
 			assert call_args.kwargs['json'] == {'action': 'stop'}
 			assert 'X-Browser-Use-API-Key' in call_args.kwargs['headers']
 
 	async def test_stop_browser_session_not_found(self, mock_auth_config, monkeypatch):
 		"""Test stopping a browser session that doesn't exist."""
 
-		# Clear environment variable so test uses mock_auth_config
+		# Clear environment variable so start uses mock_auth_config
 		monkeypatch.delenv('BROWSER_USE_API_KEY', raising=False)
 
 		with patch('httpx.AsyncClient') as mock_client_class:
@@ -236,7 +236,7 @@ class TestBrowserSessionCloudIntegration:
 	async def test_cloud_browser_profile_property(self):
 		"""Test that cloud_browser property works correctly."""
 
-		# Just test the profile and session properties without connecting
+		# Just start the profile and session properties without connecting
 		profile = BrowserProfile(use_cloud=True)
 		session = BrowserSession(browser_profile=profile, cdp_url='ws://mock-url')  # Provide CDP URL to avoid connection
 
@@ -246,7 +246,7 @@ class TestBrowserSessionCloudIntegration:
 	async def test_browser_session_cloud_browser_logic(self, mock_auth_config, monkeypatch):
 		"""Test that cloud browser profile settings work correctly."""
 
-		# Clear environment variable so test uses mock_auth_config
+		# Clear environment variable so start uses mock_auth_config
 		monkeypatch.delenv('BROWSER_USE_API_KEY', raising=False)
 
 		# Test cloud browser profile creation

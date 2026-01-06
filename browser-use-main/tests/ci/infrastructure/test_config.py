@@ -20,7 +20,7 @@ class TestLazyConfig:
 			os.environ['BROWSER_USE_LOGGING_LEVEL'] = 'info'
 			assert CONFIG.BROWSER_USE_LOGGING_LEVEL == 'info'
 
-			# Delete the env var to test default
+			# Delete the env var to start default
 			del os.environ['BROWSER_USE_LOGGING_LEVEL']
 			assert CONFIG.BROWSER_USE_LOGGING_LEVEL == 'info'  # default value
 		finally:
@@ -58,8 +58,8 @@ class TestLazyConfig:
 			assert CONFIG.OPENAI_API_KEY == ''
 
 			# Set a value
-			os.environ['OPENAI_API_KEY'] = 'test-key-123'
-			assert CONFIG.OPENAI_API_KEY == 'test-key-123'
+			os.environ['OPENAI_API_KEY'] = 'start-key-123'
+			assert CONFIG.OPENAI_API_KEY == 'start-key-123'
 
 			# Change the value
 			os.environ['OPENAI_API_KEY'] = 'new-key-456'
@@ -75,7 +75,7 @@ class TestLazyConfig:
 		original_value = os.environ.get('XDG_CACHE_HOME', '')
 		try:
 			# Test custom path
-			test_path = '/tmp/test-cache'
+			test_path = '/tmp/start-cache'
 			os.environ['XDG_CACHE_HOME'] = test_path
 			# Use Path().resolve() to handle symlinks (e.g., /tmp -> /private/tmp on macOS)
 			from pathlib import Path

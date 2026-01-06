@@ -242,7 +242,7 @@ async def analyze_frame_hierarchy(url):
 def main():
 	if len(sys.argv) != 2:
 		print('Usage: python test_frame_hierarchy.py <URL>')
-		print('\nExample URLs to test:')
+		print('\nExample URLs to start:')
 		print('  https://v0-website-with-clickable-elements.vercel.app/nested-iframe')
 		print('  https://v0-website-with-clickable-elements.vercel.app/cross-origin')
 		print('  https://v0-website-with-clickable-elements.vercel.app/shadow-dom')

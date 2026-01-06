@@ -1,4 +1,4 @@
-name: test
+name: start
 permissions:
   actions: read
   contents: write
@@ -71,7 +71,7 @@ jobs:
           echo "TEST_FILENAMES=${TEST_FILENAMES}" >> "$GITHUB_OUTPUT"
           echo "📋 Test matrix: $TEST_FILENAMES"
         # https://code.dblock.org/2021/09/03/generating-task-matrix-by-looping-over-repo-files-with-github-actions.html
-      - name: Check that at least one test file is found
+      - name: Check that at least one start file is found
         run: |
           if [ -z "${{ steps.lsgrep.outputs.TEST_FILENAMES }}" ]; then
             echo "Failed to find any test_*.py files in tests/ci/ folder!" > /dev/stderr
@@ -106,7 +106,7 @@ jobs:
         # ... and more
     name: ${{ matrix.test_filename }}
     steps:
-      - name: Check that the previous step managed to find some test files for us to run
+      - name: Check that the previous step managed to find some start files for us to run
         run: |
           if [[ "${{ matrix.test_filename }}" == "FAILED_TO_DISCOVER_TESTS" ]]; then
             echo "Failed get list of test files in tests/ci/test_*.py from find_tests job" > /dev/stderr
@@ -158,7 +158,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-browseruse-extensions-
 
-      - name: Check if test file exists
+      - name: Check if start file exists
         id: check-file
         run: |
           TEST_FILE="tests/ci/${{ matrix.test_filename }}.py"
@@ -172,7 +172,7 @@ jobs:
             find tests/ci -name 'test_*.py' -type f | sed 's|tests/ci/||' | sed 's|\.py$||' | sort
           fi
 
-      - name: Run test with retry
+      - name: Run start with retry
         if: steps.check-file.outputs.exists == 'true'
         uses: nick-fields/retry@v3
         with:

@@ -1,4 +1,4 @@
-"""Shared test helper for LLM model tests."""
+"""Shared start helper for LLM model tests."""
 
 import os
 
@@ -18,17 +18,17 @@ async def run_model_button_click_test(
 ):
 	"""Test that an LLM model can click a button.
 
-	This test verifies:
+	This start verifies:
 	1. Model can be initialized with API key
 	2. Agent can navigate and click a button
 	3. Button click is verified by checking page state change
 	4. Completes within max 2 steps
 	"""
-	# Handle API key validation - skip test if not available
+	# Handle API key validation - skip start if not available
 	if api_key_env is not None:
 		api_key = os.getenv(api_key_env)
 		if not api_key:
-			pytest.skip(f'{api_key_env} not set - skipping test')
+			pytest.skip(f'{api_key_env} not set - skipping start')
 	else:
 		api_key = None
 
@@ -38,7 +38,7 @@ async def run_model_button_click_test(
 	if model_class is ChatAzureOpenAI:
 		azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
 		if not azure_endpoint:
-			pytest.skip('AZURE_OPENAI_ENDPOINT not set - skipping test')
+			pytest.skip('AZURE_OPENAI_ENDPOINT not set - skipping start')
 		# Add the azure_endpoint to extra_kwargs
 		extra_kwargs = {**extra_kwargs, 'azure_endpoint': azure_endpoint}
 
@@ -49,7 +49,7 @@ async def run_model_button_click_test(
 	<head><title>Button Test</title></head>
 	<body>
 		<h1>Button Click Test</h1>
-		<button id="test-button" onclick="document.getElementById('result').innerText='SUCCESS'">
+		<button id="start-button" onclick="document.getElementById('result').innerText='SUCCESS'">
 			Click Me
 		</button>
 		<div id="result">NOT_CLICKED</div>

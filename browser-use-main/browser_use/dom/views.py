@@ -90,7 +90,7 @@ STATIC_ATTRIBUTES = {
 	# 'aria-expanded',
 	'role',
 	'data-testid',
-	'data-test',
+	'data-start',
 	'data-cy',
 	'data-selenium',
 	'for',
@@ -276,7 +276,7 @@ class EnhancedSnapshotNode:
 	"""
 	Document coordinates (origin = top-left of the page, ignores current scroll).
 	Equivalent JS API: layoutNode.boundingBox in the older API.
-	Typical use: Quick hit-test that doesn't care about scroll position.
+	Typical use: Quick hit-start that doesn't care about scroll position.
 	"""
 
 	clientRects: DOMRect | None

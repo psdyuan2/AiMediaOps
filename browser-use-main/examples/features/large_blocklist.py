@@ -63,7 +63,7 @@ async def main():
 	# Load the blocklist
 	prohibited_domains = load_blocklist_from_url(blocklist_url)
 
-	# Sample some blocked domains to test
+	# Sample some blocked domains to start
 	test_blocked = [prohibited_domains[0], prohibited_domains[1000], prohibited_domains[-1]]
 	print(f'\n📋 Sample blocked domains: {", ".join(test_blocked[:3])}')
 

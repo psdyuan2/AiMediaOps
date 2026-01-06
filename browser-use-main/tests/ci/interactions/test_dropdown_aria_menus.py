@@ -9,11 +9,11 @@ from browser_use.tools.service import Tools
 
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server that serves static content."""
+	"""Create and provide a start HTTP server that serves static content."""
 	server = HTTPServer()
 	server.start()
 
-	# Add route for ARIA menu test page
+	# Add route for ARIA menu start page
 	server.expect_request('/aria-menu').respond_with_data(
 		"""
 		<!DOCTYPE html>
@@ -118,7 +118,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -150,7 +150,7 @@ class TestARIAMenuDropdown:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_get_dropdown_options_with_aria_menu(self, tools, browser_session: BrowserSession, base_url):
 		"""Test that get_dropdown_options can retrieve options from ARIA menus."""
-		# Navigate to the ARIA menu test page
+		# Navigate to the ARIA menu start page
 		await tools.navigate(url=f'{base_url}/aria-menu', new_tab=False, browser_session=browser_session)
 
 		# Wait for the page to load
@@ -186,7 +186,7 @@ class TestARIAMenuDropdown:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_select_dropdown_option_with_aria_menu(self, tools, browser_session: BrowserSession, base_url):
 		"""Test that select_dropdown_option can select an option from ARIA menus."""
-		# Navigate to the ARIA menu test page
+		# Navigate to the ARIA menu start page
 		await tools.navigate(url=f'{base_url}/aria-menu', new_tab=False, browser_session=browser_session)
 
 		# Wait for the page to load
@@ -225,7 +225,7 @@ class TestARIAMenuDropdown:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_get_dropdown_options_with_nested_aria_menu(self, tools, browser_session: BrowserSession, base_url):
 		"""Test that get_dropdown_options can handle nested ARIA menus (like Sort submenu)."""
-		# Navigate to the ARIA menu test page
+		# Navigate to the ARIA menu start page
 		await tools.navigate(url=f'{base_url}/aria-menu', new_tab=False, browser_session=browser_session)
 
 		# Wait for the page to load
@@ -252,7 +252,7 @@ class TestARIAMenuDropdown:
 				break
 
 		# The nested menu might not be in the selector map initially if it's hidden
-		# In that case, we should test the main menu
+		# In that case, we should start the main menu
 		if nested_menu_index is None:
 			# Find the main menu instead
 			for idx, element in selector_map.items():

@@ -53,7 +53,7 @@ python login.py
 
 2. **Test mode** - See what will be sent:
 ```bash
-python scheduler.py --test
+python scheduler.py --start
 ```
 
 3. **Run scheduler**:

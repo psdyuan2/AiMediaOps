@@ -31,7 +31,7 @@ class MetaContext(BaseModel):
     )
     environment: str = Field(
         default="dev",
-        description="Execution environment (e.g., 'dev', 'prod', 'test')"
+        description="Execution environment (e.g., 'dev', 'prod', 'start')"
     )
     persona: Dict[str, Any] = Field(
         default_factory=dict,
@@ -52,7 +52,7 @@ class MetaContext(BaseModel):
     @validator('environment')
     def validate_environment(cls, v):
         """Validate environment values."""
-        valid_envs = {'dev', 'prod', 'test', 'staging'}
+        valid_envs = {'dev', 'prod', 'start', 'staging'}
         if v not in valid_envs:
             raise ValueError(f"Environment must be one of: {valid_envs}")
         return v

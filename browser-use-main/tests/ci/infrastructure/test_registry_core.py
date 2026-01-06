@@ -60,13 +60,13 @@ class ComplexParams(BaseActionModel):
 # Test fixtures
 @pytest.fixture(scope='session')
 def http_server():
-	"""Create and provide a test HTTP server that serves static content."""
+	"""Create and provide a start HTTP server that serves static content."""
 	server = HTTPServer()
 	server.start()
 
-	# Add a simple test page that can handle multiple requests
-	server.expect_request('/test', handler_type=HandlerType.PERMANENT).respond_with_data(
-		'<html><head><title>Test Page</title></head><body><h1>Test Page</h1><p>Hello from test page</p></body></html>',
+	# Add a simple start page that can handle multiple requests
+	server.expect_request('/start', handler_type=HandlerType.PERMANENT).respond_with_data(
+		'<html><head><title>Test Page</title></head><body><h1>Test Page</h1><p>Hello from start page</p></body></html>',
 		content_type='text/html',
 	)
 
@@ -77,7 +77,7 @@ def http_server():
 
 @pytest.fixture(scope='session')
 def base_url(http_server):
-	"""Return the base URL for the test HTTP server."""
+	"""Return the base URL for the start HTTP server."""
 	return f'http://{http_server.host}:{http_server.port}'
 
 
@@ -89,7 +89,7 @@ def mock_llm():
 
 @pytest.fixture(scope='function')
 def registry():
-	"""Create a fresh registry for each test"""
+	"""Create a fresh registry for each start"""
 	return Registry[TestContext]()
 
 
@@ -106,7 +106,7 @@ async def browser_session(base_url):
 	await browser_session.start()
 	from browser_use.browser.events import NavigateToUrlEvent
 
-	browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/test'))
+	browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/start'))
 	await asyncio.sleep(0.5)  # Wait for navigation
 	yield browser_session
 	await browser_session.kill()
@@ -137,10 +137,10 @@ class TestActionRegistryParameterPatterns:
 			url = await browser_session.get_current_page_url()
 			return ActionResult(extracted_content=f'Text: {text}, URL: {url}')
 
-		# Navigate to test page first
+		# Navigate to start page first
 		from browser_use.browser.events import NavigateToUrlEvent
 
-		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/test', new_tab=True))
+		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/start', new_tab=True))
 		await event
 
 		# Test execution
@@ -161,20 +161,20 @@ class TestActionRegistryParameterPatterns:
 				extracted_content=f'Text: {params.text}, Number: {params.number}, Flag: {params.optional_flag}, URL: {url}'
 			)
 
-		# Navigate to test page first
+		# Navigate to start page first
 		from browser_use.browser.events import NavigateToUrlEvent
 
-		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/test', new_tab=True))
+		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/start', new_tab=True))
 		await event
 
 		# Test execution
 		result = await registry.execute_action(
-			'pydantic_action', {'text': 'test', 'number': 100, 'optional_flag': True}, browser_session=browser_session
+			'pydantic_action', {'text': 'start', 'number': 100, 'optional_flag': True}, browser_session=browser_session
 		)
 
 		assert isinstance(result, ActionResult)
 		assert result.extracted_content is not None
-		assert 'Text: test, Number: 100, Flag: True' in result.extracted_content
+		assert 'Text: start, Number: 100, Flag: True' in result.extracted_content
 		assert base_url in result.extracted_content
 
 	async def test_mixed_special_parameters(self, registry, browser_session, base_url, mock_llm):
@@ -189,7 +189,7 @@ class TestActionRegistryParameterPatterns:
 			page_extraction_llm: BaseChatModel,
 			available_file_paths: list,
 		):
-			llm_response = await page_extraction_llm.ainvoke([UserMessage(content='test')])
+			llm_response = await page_extraction_llm.ainvoke([UserMessage(content='start')])
 			files = available_file_paths or []
 			url = await browser_session.get_current_page_url()
 
@@ -197,10 +197,10 @@ class TestActionRegistryParameterPatterns:
 				extracted_content=f'Text: {text}, URL: {url}, LLM: {llm_response.completion}, Files: {len(files)}'
 			)
 
-		# Navigate to test page first
+		# Navigate to start page first
 		from browser_use.browser.events import NavigateToUrlEvent
 
-		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/test', new_tab=True))
+		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/start', new_tab=True))
 		await event
 
 		# Test execution
@@ -236,7 +236,7 @@ class TestActionRegistryParameterPatterns:
 		assert isinstance(result, ActionResult)
 		assert result.extracted_content is not None
 		assert 'No params action executed on' in result.extracted_content
-		assert '/test' in result.extracted_content
+		assert '/start' in result.extracted_content
 
 
 class TestActionToActionCalling:
@@ -265,12 +265,12 @@ class TestActionToActionCalling:
 			return ActionResult(extracted_content=f'Called result: {intermediate_result.extracted_content}')
 
 		# Test the calling chain
-		result = await registry.execute_action('calling_action', {'message': 'test'}, browser_session=browser_session)
+		result = await registry.execute_action('calling_action', {'message': 'start'}, browser_session=browser_session)
 
 		assert isinstance(result, ActionResult)
 		assert result.extracted_content is not None
-		assert 'Called result: First: Helper processed: test on' in result.extracted_content
-		assert '/test' in result.extracted_content
+		assert 'Called result: First: Helper processed: start on' in result.extracted_content
+		assert '/start' in result.extracted_content
 
 	async def test_google_sheets_style_calling_pattern(self, registry, browser_session):
 		"""Test the specific pattern from Google Sheets actions that causes the error"""
@@ -305,14 +305,14 @@ class TestActionToActionCalling:
 		)
 		assert result_fixed.extracted_content is not None
 		assert 'Selected cell A1:F100 on' in result_fixed.extracted_content
-		assert '/test' in result_fixed.extracted_content
+		assert '/start' in result_fixed.extracted_content
 
 		# Test the chained calling pattern
 		result_chain = await registry.execute_action(
-			'update_range_contents', {'range_name': 'B2:D4', 'new_contents': 'test data'}, browser_session=browser_session
+			'update_range_contents', {'range_name': 'B2:D4', 'new_contents': 'start data'}, browser_session=browser_session
 		)
 		assert result_chain.extracted_content is not None
-		assert 'Updated range B2:D4 with test data' in result_chain.extracted_content
+		assert 'Updated range B2:D4 with start data' in result_chain.extracted_content
 
 		# Test the problematic version (should work with enhanced registry)
 		result_problematic = await registry.execute_action(
@@ -321,7 +321,7 @@ class TestActionToActionCalling:
 		# With the enhanced registry, this should succeed
 		assert result_problematic.extracted_content is not None
 		assert 'Selected cell A1:F100 on' in result_problematic.extracted_content
-		assert '/test' in result_problematic.extracted_content
+		assert '/start' in result_problematic.extracted_content
 
 	async def test_complex_action_chain(self, registry, browser_session):
 		"""Test a complex chain of actions calling other actions"""
@@ -348,12 +348,12 @@ class TestActionToActionCalling:
 			return ActionResult(extracted_content=f'Top: {middle_result.extracted_content}')
 
 		# Test the full chain
-		result = await registry.execute_action('top_action', {'original': 'test'}, browser_session=browser_session)
+		result = await registry.execute_action('top_action', {'original': 'start'}, browser_session=browser_session)
 
 		assert isinstance(result, ActionResult)
 		assert result.extracted_content is not None
-		assert 'Top: Middle: Base: processed-enhanced-test on' in result.extracted_content
-		assert '/test' in result.extracted_content
+		assert 'Top: Middle: Base: processed-enhanced-start on' in result.extracted_content
+		assert '/start' in result.extracted_content
 
 
 class TestRegistryEdgeCases:
@@ -391,7 +391,7 @@ class TestRegistryEdgeCases:
 		with pytest.raises(RuntimeError, match='requires browser_session but none provided'):
 			await registry.execute_action(
 				'requires_browser',
-				{'text': 'test'},
+				{'text': 'start'},
 				# No browser_session provided
 			)
 
@@ -403,14 +403,14 @@ class TestRegistryEdgeCases:
 		@registry.action('Requires LLM')
 		async def requires_llm(text: str, browser_session: BrowserSession, page_extraction_llm: BaseChatModel):
 			url = await browser_session.get_current_page_url()
-			llm_response = await page_extraction_llm.ainvoke([UserMessage(content='test')])
+			llm_response = await page_extraction_llm.ainvoke([UserMessage(content='start')])
 			return ActionResult(extracted_content=f'Text: {text}, LLM: {llm_response.completion}')
 
 		# Should raise RuntimeError when page_extraction_llm is required but not provided
 		with pytest.raises(RuntimeError, match='requires page_extraction_llm but none provided'):
 			await registry.execute_action(
 				'requires_llm',
-				{'text': 'test'},
+				{'text': 'start'},
 				browser_session=browser_session,
 				# No page_extraction_llm provided
 			)
@@ -445,11 +445,11 @@ class TestRegistryEdgeCases:
 			return ActionResult(extracted_content=f'Sync: {text}')
 
 		# Should work even though the original function is sync
-		result = await registry.execute_action('sync_action', {'text': 'test'}, browser_session=browser_session)
+		result = await registry.execute_action('sync_action', {'text': 'start'}, browser_session=browser_session)
 
 		assert isinstance(result, ActionResult)
 		assert result.extracted_content is not None
-		assert 'Sync: test' in result.extracted_content
+		assert 'Sync: start' in result.extracted_content
 
 	async def test_excluded_actions(self, browser_session):
 		"""Test that excluded actions are not registered"""
@@ -470,12 +470,12 @@ class TestRegistryEdgeCases:
 
 		# Should raise error when trying to execute excluded action
 		with pytest.raises(ValueError, match='Action excluded_action not found'):
-			await registry_with_exclusions.execute_action('excluded_action', {'text': 'test'})
+			await registry_with_exclusions.execute_action('excluded_action', {'text': 'start'})
 
 		# Included action should work
-		result = await registry_with_exclusions.execute_action('included_action', {'text': 'test'})
+		result = await registry_with_exclusions.execute_action('included_action', {'text': 'start'})
 		assert result.extracted_content is not None
-		assert 'Should execute: test' in result.extracted_content
+		assert 'Should execute: start' in result.extracted_content
 
 
 class TestExistingToolsActions:
@@ -507,9 +507,9 @@ class TestExistingToolsActions:
 		assert 'Clicked element: 42' in result2.extracted_content
 
 		# Test InputTextAction
-		result3 = await registry.execute_action('test_input', {'index': 5, 'text': 'test input'}, browser_session=browser_session)
+		result3 = await registry.execute_action('test_input', {'index': 5, 'text': 'start input'}, browser_session=browser_session)
 		assert result3.extracted_content is not None
-		assert 'Input text: test input at index: 5' in result3.extracted_content
+		assert 'Input text: start input at index: 5' in result3.extracted_content
 
 	async def test_pydantic_vs_individual_params_consistency(self, registry, browser_session):
 		"""Test that pydantic and individual parameter patterns produce consistent results"""

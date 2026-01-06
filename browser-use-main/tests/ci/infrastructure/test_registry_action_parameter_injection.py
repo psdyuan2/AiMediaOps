@@ -17,13 +17,13 @@ class TestBrowserContext:
 
 	@pytest.fixture(scope='session')
 	def http_server(self):
-		"""Create and provide a test HTTP server that serves static content."""
+		"""Create and provide a start HTTP server that serves static content."""
 		server = HTTPServer()
 		server.start()
 
-		# Add routes for test pages
+		# Add routes for start pages
 		server.expect_request('/').respond_with_data(
-			'<html><head><title>Test Home Page</title></head><body><h1>Test Home Page</h1><p>Welcome to the test site</p></body></html>',
+			'<html><head><title>Test Home Page</title></head><body><h1>Test Home Page</h1><p>Welcome to the start site</p></body></html>',
 			content_type='text/html',
 		)
 
@@ -55,7 +55,7 @@ class TestBrowserContext:
 
 	@pytest.fixture(scope='session')
 	def base_url(self, http_server):
-		"""Return the base URL for the test HTTP server."""
+		"""Return the base URL for the start HTTP server."""
 		return f'http://{http_server.host}:{http_server.port}'
 
 	@pytest.fixture(scope='module')
@@ -128,7 +128,7 @@ class TestBrowserContext:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_navigate_and_get_current_page(self, browser_session, base_url):
 		"""Test that navigate method changes the URL and get_current_page returns the proper page."""
-		# Navigate to the test page
+		# Navigate to the start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/'))
@@ -148,7 +148,7 @@ class TestBrowserContext:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_refresh_page(self, browser_session, base_url):
 		"""Test that refresh_page correctly reloads the current page."""
-		# Navigate to the test page
+		# Navigate to the start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/'))
@@ -175,7 +175,7 @@ class TestBrowserContext:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_execute_javascript(self, browser_session, base_url):
 		"""Test that execute_javascript correctly executes JavaScript in the current page."""
-		# Navigate to a test page
+		# Navigate to a start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/'))
@@ -199,7 +199,7 @@ class TestBrowserContext:
 	@pytest.mark.skip(reason='get_scroll_info API changed - depends on page object that no longer exists')
 	async def test_get_scroll_info(self, browser_session, base_url):
 		"""Test that get_scroll_info returns the correct scroll position information."""
-		# Navigate to the scroll test page
+		# Navigate to the scroll start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/scroll_test'))
@@ -229,7 +229,7 @@ class TestBrowserContext:
 	@pytest.mark.skip(reason='TODO: fix')
 	async def test_take_screenshot(self, browser_session, base_url):
 		"""Test that take_screenshot returns a valid base64 encoded image."""
-		# Navigate to the test page
+		# Navigate to the start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/'))
@@ -267,7 +267,7 @@ class TestBrowserContext:
 		tabs_info = await browser_session.get_tabs()
 		assert len(tabs_info) == 2, 'Should have two tabs open'
 
-		# Verify current tab is the scroll test page
+		# Verify current tab is the scroll start page
 		current_url = await browser_session.get_current_page_url()
 		assert f'{base_url}/scroll_test' in current_url
 
@@ -295,7 +295,7 @@ class TestBrowserContext:
 	# @pytest.mark.asyncio
 	# async def test_remove_highlights(self, browser_session, base_url):
 	# 	"""Test that remove_highlights successfully removes highlight elements."""
-	# 	# Navigate to a test page
+	# 	# Navigate to a start page
 	# 	from browser_use.browser.events import NavigateToUrlEvent; event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/')
 
 	# 	# Add a highlight via JavaScript
@@ -348,7 +348,7 @@ class TestBrowserContext:
 		def simple_action():
 			return ActionResult(extracted_content='return some result')
 
-		# Navigate to a test page
+		# Navigate to a start page
 		from browser_use.browser.events import NavigateToUrlEvent
 
 		event = browser_session.event_bus.dispatch(NavigateToUrlEvent(url=f'{base_url}/'))
