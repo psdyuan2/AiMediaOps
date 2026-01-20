@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import type { Task, TaskMode } from '@/types/task';
 import { useTaskStore } from '@/store/taskStore';
+import { useLicenseStore } from '@/store/licenseStore';
 import { formatDateTime, getStatusColor, getStatusText } from '@/utils/format';
 
 interface TaskCardProps {
@@ -61,6 +62,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const { deleteTask, pauseTask, resumeTask, executeTask, selectTask } = useTaskStore();
+   const { licenseStatus } = useLicenseStore();
+   const canExecuteImmediately = licenseStatus?.activated ?? false;
 
   const handleDelete = async () => {
     await deleteTask(task.task_id);
@@ -165,11 +168,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </Space>
       </div>
 
-      {/* 卡片内容（可展开） */}
+          {/* 卡片内容（可展开） */}
       {expanded && (
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
           <div style={{ marginBottom: 16 }}>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
               <div>
                 <span style={{ color: '#999' }}>下次执行: </span>
                 <span>{formatDateTime(task.next_execution_time)}</span>
@@ -190,9 +193,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* 操作按钮组 */}
           <Space wrap>
             {task.status !== 'completed' && task.status !== 'running' && (
+              <Tooltip
+                title={
+                  canExecuteImmediately
+                    ? '立即执行任务'
+                    : '免费试用版不支持立即执行，请激活产品以使用此功能'
+                }
+              >
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
+                  disabled={!canExecuteImmediately}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleExecute();
@@ -200,6 +211,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               >
                 立即执行
               </Button>
+              </Tooltip>
             )}
             {task.status === 'paused' ? (
               <Button

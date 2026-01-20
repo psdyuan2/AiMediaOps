@@ -4,9 +4,9 @@ API 异常处理模块
 定义自定义异常和异常处理器
 """
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from fastapi import Request
+
 from app.core.logger import logger
 
 
@@ -46,6 +46,39 @@ class DispatcherAlreadyRunningError(HTTPException):
         )
 
 
+class LicenseNotActivatedError(HTTPException):
+    """产品未激活异常"""
+
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="产品未激活，请先激活注册码",
+        )
+
+
+class LicenseExpiredError(HTTPException):
+    """产品已过期异常"""
+
+    def __init__(self, end_time: str):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"产品已过期，过期时间：{end_time}。请重新激活注册码",
+        )
+
+
+class TaskLimitReachedError(HTTPException):
+    """任务数量达到上限异常"""
+
+    def __init__(self, max_tasks: int, current_tasks: int, remaining: int):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"已达到最大任务数量限制（{max_tasks}），无法创建新任务。"
+                f"当前任务数：{current_tasks}，剩余可用：{remaining}"
+            ),
+        )
+
+
 async def global_exception_handler(request: Request, exc: Exception):
     """
     全局异常处理器
@@ -58,8 +91,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "success": False,
             "error": "内部服务器错误",
-            "message": str(exc) if logger.level <= 10 else "请查看服务器日志"
-        }
+            "message": str(exc),
+        },
     )
 
 
@@ -67,13 +100,26 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     """
     HTTP 异常处理器
     
-    处理 FastAPI 的 HTTPException
+    处理 FastAPI 的 HTTPException，返回统一格式，并在需要时附加错误代码。
     """
+    error_data = {
+        "success": False,
+        "error": exc.detail,
+    }
+
+    # 根据异常类型附加错误代码和类型，便于前端处理
+    if isinstance(exc, LicenseNotActivatedError):
+        error_data["error_code"] = "LICENSE_NOT_ACTIVATED"
+        error_data["error_type"] = "license"
+    elif isinstance(exc, LicenseExpiredError):
+        error_data["error_code"] = "LICENSE_EXPIRED"
+        error_data["error_type"] = "license"
+    elif isinstance(exc, TaskLimitReachedError):
+        error_data["error_code"] = "TASK_LIMIT_REACHED"
+        error_data["error_type"] = "task_limit"
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "success": False,
-            "error": exc.detail
-        }
+        content=error_data,
     )
 

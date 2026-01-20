@@ -57,7 +57,11 @@ export const DispatcherControl: React.FC = () => {
             <Statistic
               title="状态"
               value={status.is_running ? '运行中' : '已停止'}
-              valueStyle={{ color: status.is_running ? '#3f8600' : '#cf1322' }}
+              styles={{
+                content: {
+                  color: status.is_running ? '#3f8600' : '#cf1322',
+                },
+              }}
             />
           </Space>
         </Col>

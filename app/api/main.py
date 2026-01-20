@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
-from app.api.routers import health, dispatcher, tasks, accounts, help
+from app.api.routers import health, dispatcher, tasks, accounts, help, license
 from app.api.exceptions import (
     global_exception_handler,
     http_exception_handler
@@ -131,6 +131,7 @@ app.include_router(dispatcher.router, prefix="/api/v1/dispatcher", tags=["调度
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["任务管理"])
 app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["账户管理"])
 app.include_router(help.router, prefix="/api/v1", tags=["帮助文档"])
+app.include_router(license.router, prefix="/api/v1", tags=["注册码"])
 
 # 静态文件服务
 from pathlib import Path
@@ -149,6 +150,20 @@ if static_dir.exists():
 async def startup_event():
     """应用启动事件"""
     logger.info("任务调度器 API 服务启动")
+
+    # 在启动时检查注册码状态，仅记录日志，不阻塞启动
+    try:
+        from app.core.license_manager import get_license_manager
+
+        lm = get_license_manager()
+        if not lm.is_activated():
+            logger.warning("⚠️ 产品未激活，当前处于免费试用模式（最多 1 个任务，间隔固定 2 小时，不支持立即执行）")
+        elif lm.is_expired():
+            logger.warning("⚠️ 产品注册码已过期，请尽快重新激活")
+        else:
+            logger.info("✅ 产品注册码状态正常")
+    except Exception as e:
+        logger.error(f"启动时检查注册码状态失败: {e}", exc_info=True)
 
 
 @app.on_event("shutdown")

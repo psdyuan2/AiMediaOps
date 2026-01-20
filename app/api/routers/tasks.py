@@ -18,10 +18,16 @@ from app.api.models import (
 )
 from app.api.dependencies import get_dispatcher
 from app.api.utils import task_info_to_response
-from app.api.exceptions import TaskNotFoundError, AccountExistsError
+from app.api.exceptions import (
+    TaskNotFoundError,
+    AccountExistsError,
+    LicenseExpiredError,
+    TaskLimitReachedError,
+)
 from app.manager.task_dispatcher import TaskDispatcher
 from app.manager.task_info import TaskStatus
 from app.core.logger import logger
+from app.core.license_manager import get_license_manager, LicenseManager
 from app.utils.path_utils import get_user_images_path, get_user_source_file_path
 
 router = APIRouter()
@@ -30,7 +36,8 @@ router = APIRouter()
 @router.post("/", response_model=TaskCreateResponse, tags=["任务管理"])
 async def create_task(
     request: TaskCreateRequest,
-    dispatcher: TaskDispatcher = Depends(get_dispatcher)
+    dispatcher: TaskDispatcher = Depends(get_dispatcher),
+    license_manager: LicenseManager = Depends(get_license_manager),
 ):
     """
     创建新任务
@@ -38,8 +45,29 @@ async def create_task(
     创建一个新的任务，如果账户ID已存在任务则返回错误
     """
     try:
-        # 准备参数
-        kwargs = request.dict(exclude={'sys_type'})
+        # ---------------- 注册码与任务数量限制 ----------------
+        # 当前任务数 & 最大任务数（已过期时将退回免费版上限）
+        current_count = len(dispatcher.list_tasks())
+        max_tasks = license_manager.get_max_tasks()
+
+        if current_count >= max_tasks:
+            if not license_manager.is_activated():
+                # 免费试用：只提示，不弹激活框
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"免费试用版最多只能创建 {max_tasks} 个任务。请激活产品以创建更多任务。",
+                    headers={"X-License-Limit": "free_trial"},
+                )
+            else:
+                # 已激活：使用专用异常，前端可引导查看套餐
+                raise TaskLimitReachedError(
+                    max_tasks=max_tasks,
+                    current_tasks=current_count,
+                    remaining=0,
+                )
+
+        # ---------------- 准备参数 ----------------
+        kwargs = request.dict(exclude={"sys_type"})
         
         # 处理 task_type：在接口层将字符串转换为枚举（确保类型正确）
         from app.data.constants import DEFAULT_TASK_TYPE
@@ -57,6 +85,23 @@ async def create_task(
             kwargs['task_type'] = task_type_str
         else:
             kwargs['task_type'] = DEFAULT_TASK_TYPE.XHS_TYPE  # 默认值
+        
+        # 处理执行间隔限制
+        interval_value = request.interval
+        interval_limit = license_manager.get_interval_limit()
+        if interval_limit is not None:
+            # 未激活：强制固定为 2 小时
+            if interval_value != interval_limit:
+                logger.info("免费试用版：执行间隔已自动设置为2小时（7200秒）")
+            interval_value = interval_limit
+        else:
+            # 已激活：校验范围（15分钟 - 3小时）
+            if interval_value < 900 or interval_value > 10800:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="执行间隔必须在900秒（15分钟）到10800秒（3小时）之间",
+                )
+        kwargs["interval"] = interval_value
         
         # 处理 task_end_time
         if request.task_end_time:
@@ -444,7 +489,8 @@ async def reorder_task(
 async def execute_task(
     task_id: str,
     request: Optional[TaskExecuteRequest] = Body(None, description="执行任务请求参数（可选）"),
-    dispatcher: TaskDispatcher = Depends(get_dispatcher)
+    dispatcher: TaskDispatcher = Depends(get_dispatcher),
+    license_manager: LicenseManager = Depends(get_license_manager),
 ):
     """
     立即执行任务
@@ -465,6 +511,15 @@ async def execute_task(
     }
     ```
     """
+    # 注册码限制：未激活/过期时不允许立即执行
+    if not license_manager.can_execute_immediately():
+        # 这里不区分免费试用和已过期，统一文案即可
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="当前版本不支持立即执行功能，请激活或续费产品以使用此功能。",
+            headers={"X-License-Limit": "free_trial"},
+        )
+
     # 检查任务是否存在
     task_info = dispatcher.get_task_status(task_id)
     if not task_info:

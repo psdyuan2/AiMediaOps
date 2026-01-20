@@ -4,11 +4,15 @@ import { PlusOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useTaskStore } from '@/store/taskStore';
 import type { TaskMode } from '@/types/task';
 import dayjs from 'dayjs';
+import { useLicenseStore } from '@/store/licenseStore';
+import { LicenseCard } from '@/components/LicenseCard';
 
 const { Sider } = Layout;
 
 export const Sidebar: React.FC = () => {
   const { selectedTask } = useTaskStore();
+  const { licenseStatus, fetchLicenseStatus } = useLicenseStore();
+  const isActivated = licenseStatus?.activated ?? false;
   const [interval, setInterval] = React.useState(3600);
   const [endTime, setEndTime] = React.useState<dayjs.Dayjs | null>(null);
   const [timeRangeUnlimited, setTimeRangeUnlimited] = React.useState(false);
@@ -16,6 +20,8 @@ export const Sidebar: React.FC = () => {
   const [timeRangeEnd, setTimeRangeEnd] = React.useState(22);
   const [mode, setMode] = React.useState<TaskMode>('standard');
   const [interactionNoteCount, setInteractionNoteCount] = React.useState(3);
+
+  const [licenseCardVisible, setLicenseCardVisible] = React.useState(false);
 
   // 当选中任务变化时，更新表单值
   useEffect(() => {
@@ -51,6 +57,13 @@ export const Sidebar: React.FC = () => {
       setInteractionNoteCount(3);
     }
   }, [selectedTask]);
+
+  // 打开侧边栏时预取 license 状态（只拉一次）
+  useEffect(() => {
+    if (!licenseStatus) {
+      fetchLicenseStatus();
+    }
+  }, [licenseStatus, fetchLicenseStatus]);
 
   const handleIntervalChange = (value: number) => {
     // 确保值在新范围内（15分钟到3小时）
@@ -138,17 +151,24 @@ export const Sidebar: React.FC = () => {
       
       {/* Interval 滑块 */}
       <div style={{ marginBottom: 24 }}>
-        <label style={{ 
+        <label
+          style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: 14, 
           fontWeight: 500, 
           marginBottom: 8,
-          color: '#333'
-        }}>
+            color: '#333',
+          }}
+        >
           <span>执行间隔</span>
           <span style={{ fontSize: 12, color: '#999', fontWeight: 400 }}>单位(秒)</span>
+          {!isActivated && (
+            <span style={{ fontSize: 12, color: '#ff9800', marginLeft: 8 }}>
+              免费试用：固定2小时
+            </span>
+          )}
         </label>
         <div style={{ position: 'relative', padding: '0 4px' }}>
           <Slider
@@ -157,7 +177,7 @@ export const Sidebar: React.FC = () => {
             step={900}
             value={interval}
             onChange={handleIntervalChange}
-            disabled={!selectedTask}
+            disabled={!selectedTask || !isActivated}
             marks={(() => {
               // 每15分钟（900秒）添加一个白色小点作为刻度
               const marks: Record<number, any> = {};
@@ -313,8 +333,9 @@ export const Sidebar: React.FC = () => {
         />
       </div>
       
-      {/* 操作按钮 */}
-      <Space direction="vertical" style={{ width: '100%' }}>
+      {/* 操作按钮 + 套餐卡片（相对于按钮定位） */}
+      <div style={{ position: 'relative' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -327,12 +348,28 @@ export const Sidebar: React.FC = () => {
         <Button
           icon={<ShoppingOutlined />}
           block
-          disabled
-          style={{ background: '#f5f5f5', color: '#999' }}
+            onClick={() => setLicenseCardVisible(true)}
         >
           查看当前套餐
         </Button>
       </Space>
+
+        {/* 套餐信息卡片：点击“激活码激活”时，关闭卡片并弹出激活对话框 */}
+        <LicenseCard
+          open={licenseCardVisible}
+          onClose={() => setLicenseCardVisible(false)}
+          onActivate={() => {
+            setLicenseCardVisible(false);
+            // 通知主布局打开激活对话框
+            const event = new CustomEvent('openActivateDialog' as any);
+            window.dispatchEvent(event);
+          }}
+          onPurchase={() => {
+            const event = new CustomEvent('showLicensePurchase' as any);
+            window.dispatchEvent(event);
+          }}
+        />
+      </div>
     </Sider>
   );
 };

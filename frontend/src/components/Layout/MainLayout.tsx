@@ -3,12 +3,18 @@ import { Layout } from 'antd';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { HelpDialog } from '@/components/HelpDialog';
+import { LicenseActivateDialog } from '@/components/LicenseActivateDialog';
 import { Outlet } from 'react-router-dom';
+import { registerActivateDialog } from '@/services/api';
+import { useLicenseStore } from '@/store/licenseStore';
 
 const { Content } = Layout;
 
 export const MainLayout: React.FC = () => {
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [licensePurchaseOpen, setLicensePurchaseOpen] = useState(false);
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const { fetchLicenseStatus } = useLicenseStore();
 
   useEffect(() => {
     const handleShowHelp = () => {
@@ -20,6 +26,31 @@ export const MainLayout: React.FC = () => {
       window.removeEventListener('showHelpDialog' as any, handleShowHelp as EventListener);
     };
   }, []);
+
+  // 注册激活对话框打开函数 & 监听相关自定义事件
+  useEffect(() => {
+    registerActivateDialog(() => {
+      setActivateDialogOpen(true);
+      // 每次打开激活对话框时，刷新一次 license 状态
+      fetchLicenseStatus();
+    });
+
+    const handleShowLicensePurchase = () => {
+      setLicensePurchaseOpen(true);
+    };
+
+    const handleOpenActivateDialog = () => {
+      setActivateDialogOpen(true);
+      fetchLicenseStatus();
+    };
+
+    window.addEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
+    window.addEventListener('openActivateDialog' as any, handleOpenActivateDialog as EventListener);
+    return () => {
+      window.removeEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
+      window.removeEventListener('openActivateDialog' as any, handleOpenActivateDialog as EventListener);
+    };
+  }, [fetchLicenseStatus]);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -39,6 +70,12 @@ export const MainLayout: React.FC = () => {
       <HelpDialog
         open={helpDialogOpen}
         onCancel={() => setHelpDialogOpen(false)}
+      />
+
+      {/* 激活码激活对话框 */}
+      <LicenseActivateDialog
+        open={activateDialogOpen}
+        onClose={() => setActivateDialogOpen(false)}
       />
     </Layout>
   );

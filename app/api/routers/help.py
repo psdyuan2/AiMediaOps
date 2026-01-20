@@ -43,3 +43,30 @@ async def get_help_guide():
     except Exception as e:
         logger.error(f"读取帮助文档失败: {e}", exc_info=True)
         return f"# AIMediaOps 使用指南\n\n读取帮助文档失败：{str(e)}\n\n请检查帮助文档文件是否存在：`docs/help_guide.md`。"
+
+
+@router.get("/help/license-purchase", response_class=PlainTextResponse, tags=["帮助文档"])
+async def get_license_purchase_guide():
+    """
+    获取激活码购买说明文档
+    """
+    try:
+        project_root = Path(__file__).resolve().parent.parent.parent.parent
+        docs_path = project_root / "docs" / "license_purchase.md"
+        public_path = project_root / "frontend" / "public" / "license_purchase.md"
+
+        if docs_path.exists():
+            doc_file = docs_path
+        elif public_path.exists():
+            doc_file = public_path
+        else:
+            logger.warning("激活码购买文档不存在，返回默认内容")
+            return "# 激活码购买说明\n\n激活码购买文档未找到，请在 `docs/license_purchase.md` 或 `frontend/public/license_purchase.md` 中添加内容。"
+
+        with open(doc_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        return content
+    except Exception as e:
+        logger.error(f"读取激活码购买文档失败: {e}", exc_info=True)
+        return f"# 激活码购买说明\n\n读取文档失败：{str(e)}\n\n请检查 `docs/license_purchase.md` 文件是否存在。"

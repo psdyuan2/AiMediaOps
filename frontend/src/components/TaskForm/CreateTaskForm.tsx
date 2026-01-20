@@ -3,6 +3,7 @@ import { Modal, Form, Input, InputNumber, DatePicker, Space, Button, Switch, Rad
 import { useTaskStore } from '@/store/taskStore';
 import type { TaskCreateRequest, TaskMode } from '@/types/task';
 import dayjs from 'dayjs';
+import { useLicenseStore } from '@/store/licenseStore';
 
 interface CreateTaskFormProps {
   open: boolean;
@@ -22,11 +23,15 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [timeRangeUnlimited, setTimeRangeUnlimited] = React.useState(false);
   const [mode, setMode] = React.useState<TaskMode>('standard');
+  const { licenseStatus } = useLicenseStore();
+  const isActivated = licenseStatus?.activated ?? false;
+
+  const effectiveInterval = isActivated ? defaultInterval : 7200;
 
   useEffect(() => {
     if (open) {
       form.setFieldsValue({
-        interval: defaultInterval,
+        interval: effectiveInterval,
         task_end_time: defaultEndTime ? dayjs(defaultEndTime) : dayjs().add(30, 'day'),
         valid_time_range: [8, 22],
         mode: 'standard',
@@ -35,7 +40,7 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
       setTimeRangeUnlimited(false);
       setMode('standard');
     }
-  }, [open, defaultInterval, defaultEndTime, form]);
+  }, [open, effectiveInterval, defaultEndTime, form]);
 
   const handleSubmit = async (values: any) => {
     setLoading(true);
@@ -128,8 +133,19 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
             { type: 'number', max: 10800, message: '最大间隔为3小时（10800秒）' }
           ]}
         >
-          <InputNumber min={900} max={10800} step={900} style={{ width: '100%' }} />
+          <InputNumber
+            min={900}
+            max={10800}
+            step={900}
+            style={{ width: '100%' }}
+            disabled={!isActivated}
+          />
         </Form.Item>
+        {!isActivated && (
+          <div style={{ color: '#ff9800', fontSize: 12, marginTop: -16, marginBottom: 16 }}>
+            免费试用版执行间隔固定为2小时（7200秒），激活后可自定义
+          </div>
+        )}
 
         <Form.Item
           name="valid_time_range"

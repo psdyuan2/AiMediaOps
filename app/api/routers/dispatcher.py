@@ -8,6 +8,7 @@ from app.api.dependencies import get_dispatcher
 from app.manager.task_dispatcher import TaskDispatcher
 from app.manager.task_info import TaskStatus
 from app.core.logger import logger
+from app.core.license_manager import get_license_manager, LicenseManager
 
 router = APIRouter()
 
@@ -58,7 +59,8 @@ async def get_dispatcher_status(
 
 @router.post("/start", response_model=APIResponse, tags=["调度器管理"])
 async def start_dispatcher(
-    dispatcher: TaskDispatcher = Depends(get_dispatcher)
+    dispatcher: TaskDispatcher = Depends(get_dispatcher),
+    license_manager: LicenseManager = Depends(get_license_manager),
 ):
     """
     启动调度器
@@ -72,6 +74,36 @@ async def start_dispatcher(
         )
     
     try:
+        # 注册码限制：当处于免费模式（未激活或已过期）且任务数量超过免费上限时，禁止启动调度器
+        all_tasks = dispatcher.all_tasks
+        total_tasks = len(all_tasks)
+        max_tasks = license_manager.get_max_tasks()
+
+        # 免费模式（未激活或已过期）
+        in_free_mode = (not license_manager.is_activated()) or license_manager.is_expired()
+        if in_free_mode and total_tasks > max_tasks:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"当前为免费版或已过期状态，最多允许 {max_tasks} 个任务。"
+                    f"当前任务数为 {total_tasks}，超过免费版上限，无法启动调度器。"
+                    f"请删除多余任务或重新激活产品后再试。"
+                ),
+            )
+
+        # 如果在免费模式下，确保所有任务的执行间隔不低于免费版限制
+        interval_limit = license_manager.get_interval_limit()
+        if in_free_mode and interval_limit is not None:
+            adjusted_count = 0
+            for task in all_tasks.values():
+                if task.interval < interval_limit:
+                    task.interval = interval_limit
+                    adjusted_count += 1
+            if adjusted_count > 0:
+                logger.info(
+                    f"免费版/过期模式下，已将 {adjusted_count} 个任务的执行间隔调整为 {interval_limit} 秒"
+                )
+
         await dispatcher.start()
         return APIResponse(
             success=True,

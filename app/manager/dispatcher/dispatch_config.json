@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "saved_at": "2026-01-18T13:40:06.330658",
+  "saved_at": "2026-01-20T21:13:23.975128",
   "tasks": [
     {
       "task_id": "f182ca0f-d05f-41b3-b223-b211935c31d7",
@@ -13,11 +13,11 @@
       "interval": 1800,
       "valid_time_range": null,
       "task_end_time": "2026-02-09",
-      "last_execution_time": "2026-01-18T13:27:20.468461",
-      "next_execution_time": "2026-01-18T13:57:20.468461",
+      "last_execution_time": "2026-01-20T20:54:31.049155",
+      "next_execution_time": "2026-01-20T21:24:31.049155",
       "created_at": "2026-01-10T15:13:57.506011",
-      "updated_at": "2026-01-18T13:27:20.468523",
-      "round_num": 16,
+      "updated_at": "2026-01-20T20:54:31.049220",
+      "round_num": 17,
       "kwargs": {
         "task_type": "xhs_type",
         "xhs_account_id": "94267098699",
@@ -42,16 +42,16 @@
       "account_id": "18034965108",
       "account_name": "面包老师",
       "task_type": "xhs_type",
-      "status": "running",
+      "status": "paused",
       "mode": "interaction",
       "interaction_note_count": 3,
       "interval": 1800,
       "valid_time_range": null,
       "task_end_time": "2026-02-10",
       "last_execution_time": "2026-01-18T13:15:00.793372",
-      "next_execution_time": "2026-01-18T13:45:00.793372",
+      "next_execution_time": null,
       "created_at": "2026-01-13T00:16:00.781674",
-      "updated_at": "2026-01-18T13:32:39.595255",
+      "updated_at": "2026-01-20T19:46:05.082727",
       "round_num": 14,
       "kwargs": {
         "task_type": "xhs_type",
