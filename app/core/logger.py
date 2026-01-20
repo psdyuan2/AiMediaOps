@@ -217,6 +217,72 @@ def setup_logger_config(
         logger_config._log_file_path = log_file_path
 
 
+def _task_log_sink(message):
+    """
+    任务日志收集器的 sink 函数
+    
+    拦截所有日志记录，如果包含 task_id 和 bindtype=task_log，则路由到 TaskLogCollector
+    """
+    try:
+        # 延迟导入，避免循环依赖
+        from app.utils.task_log_collector import get_task_log_collector
+        from app.data.constants import LogBindType
+        from datetime import datetime
+        
+        # loguru 的 message.record 是一个字典，包含日志的所有信息
+        record = message.record
+        
+        # 从 record["extra"] 中获取 task_id 和 bindtype（通过 logger.bind(task_id=..., bindtype=...) 绑定）
+        # record["extra"] 是一个字典，包含绑定的额外字段
+        extra = record.get("extra", {})
+        if not isinstance(extra, dict):
+            return
+        
+        task_id = extra.get("task_id")
+        bindtype_str = extra.get("bindtype")
+        
+        # 只处理 bindtype=task_log 的日志
+        # 注意：由于 LogBindType 继承自 str 和 Enum，可以直接与字符串或枚举值比较
+        if not task_id or bindtype_str != LogBindType.TASK_LOG:
+            return
+        
+        collector = get_task_log_collector()
+        
+        # 获取日志级别对象，然后获取名称
+        level_obj = record.get("level")
+        if hasattr(level_obj, 'name'):
+            level_name = level_obj.name
+        else:
+            # 如果没有 name 属性，使用字符串表示
+            level_name = str(level_obj).split('.')[-1] if '.' in str(level_obj) else str(level_obj).upper()
+        
+        # 获取日志消息
+        log_message = str(record.get("message", ""))
+        
+        # 获取模块名和函数名
+        module_name = str(record.get("name", ""))
+        function_name = str(record.get("function", ""))
+        
+        # 获取时间戳（record["time"] 是一个 datetime 对象）
+        log_timestamp = record.get("time")
+        if log_timestamp is None:
+            log_timestamp = datetime.now()
+        
+        collector.add_log(
+            task_id=task_id,
+            bindtype=LogBindType.TASK_LOG,
+            level=level_name,
+            message=log_message,
+            module=module_name,
+            function=function_name,
+            timestamp=log_timestamp
+        )
+    except Exception:
+        # 日志收集失败不应该影响正常的日志输出
+        # 静默忽略错误，避免影响日志系统
+        pass
+
+
 def configure_logger(
     level: Optional[str] = None,
     enable_color: Optional[bool] = None,
@@ -265,6 +331,16 @@ def configure_logger(
         format=log_format,
         level=logger_config.level.value,
         colorize=logger_config.enable_color
+    )
+
+    # 添加任务日志收集器 sink（拦截所有日志，但不输出，只收集到内存）
+    # 注意：这个 sink 只负责收集，不影响正常日志输出
+    loguru_logger.add(
+        sink=_task_log_sink,
+        format="{message}",
+        level=logger_config.level.value,
+        enqueue=False,  # 不使用队列，直接同步处理
+        catch=True  # 捕获异常，避免影响其他日志处理器
     )
 
     # 如果需要输出到文件

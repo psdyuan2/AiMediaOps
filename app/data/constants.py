@@ -14,12 +14,16 @@ class SYS_TYPE(Enum):
     WIN_64 = "win64"
     MAC_INTEL = "mac_intel"
     MAC_SILICON = "mac_silicon"
+    def __str__(self):
+        return self.value
 
 POSTER_WORD_COUNT = 150
 
 class DEFAULT_TASK_TYPE(Enum):
     """任务类型枚举"""
     XHS_TYPE = "xhs_type"
+    def __str__(self):
+        return self.value
 
 # ==============================================
 # 新的任务数据目录结构（按用户隔离）
@@ -46,3 +50,29 @@ DEFAULT_NOTES_PATH = './app/data/task_data/notes/'        # 已废弃
 COOKIE_SOURCE_PATH = './xhs_mcp/'
 COOKIE_TARGET_PATH = './app/data/task_data/cookies/'      # 已废弃
 
+# ==============================================
+# 日志类型枚举 (LogBindType)
+# ==============================================
+class LogBindType(str, Enum):
+    """日志绑定类型枚举
+    
+    用于区分不同类型的日志，不同类型的日志会保存到不同的日志文件中。
+    前端只展示 task_log 类型的日志。
+    """
+    TASK_LOG = "task_log"      # 任务执行日志（前端展示）
+    SYSTEM_LOG = "system_log"   # 系统日志
+    ACCESS_LOG = "access_log"   # 访问日志
+    ERROR_LOG = "error_log"     # 错误日志
+    
+    def __str__(self):
+        return self.value
+
+
+class TaskMode(str, Enum):
+    """任务执行模式枚举"""
+    STANDARD = "standard"        # 标准模式：互动 + 发布
+    INTERACTION = "interaction"  # 互动模式：仅互动
+    PUBLISH = "publish"          # 发布模式：仅发布
+    
+    def __str__(self):
+        return self.value

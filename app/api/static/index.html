@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务调度器管理平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-badge {
+            @apply px-2 py-1 rounded-full text-xs font-semibold;
+        }
+        .status-pending {
+            @apply bg-gray-100 text-gray-800;
+        }
+        .status-running {
+            @apply bg-blue-100 text-blue-800;
+        }
+        .status-paused {
+            @apply bg-yellow-100 text-yellow-800;
+        }
+        .status-completed {
+            @apply bg-green-100 text-green-800;
+        }
+        .status-error {
+            @apply bg-red-100 text-red-800;
+        }
+        .loading {
+            @apply animate-pulse;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- 标题 -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">任务调度器管理平台</h1>
+            <p class="text-gray-600">管理和监控所有任务执行状态</p>
+        </div>
+
+        <!-- 调度器控制区 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">调度器控制</h2>
+            <div class="flex flex-wrap items-center gap-4">
+                <button 
+                    id="btnStart" 
+                    onclick="startDispatcher()"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    启动调度器
+                </button>
+                <button 
+                    id="btnStop" 
+                    onclick="stopDispatcher()"
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    停止调度器
+                </button>
+                <button 
+                    onclick="refreshDispatcherStatus()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    刷新状态
+                </button>
+                <div id="dispatcherStatus" class="ml-auto flex items-center gap-4 text-sm">
+                    <span class="text-gray-600">状态: <span id="statusText" class="font-semibold">加载中...</span></span>
+                    <span class="text-gray-600">总任务: <span id="totalTasks" class="font-semibold">-</span></span>
+                    <span class="text-gray-600">运行中: <span id="runningTasks" class="font-semibold">-</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务列表区 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">任务列表</h2>
+                <div class="flex gap-2">
+                    <select id="filterStatus" onchange="filterTasks()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">全部状态</option>
+                        <option value="pending">等待执行</option>
+                        <option value="running">正在执行</option>
+                        <option value="paused">已暂停</option>
+                        <option value="completed">已完成</option>
+                        <option value="error">错误</option>
+                    </select>
+                    <select id="filterAccount" onchange="filterTasks()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">全部账户</option>
+                    </select>
+                    <button onclick="refreshTaskList()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                        刷新
+                    </button>
+                </div>
+            </div>
+            <div id="taskList" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">任务ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">账户</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">下次执行时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">执行轮次</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 创建任务区 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">创建新任务</h2>
+            <form id="createTaskForm" onsubmit="createTask(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">账户ID *</label>
+                        <input 
+                            type="text" 
+                            id="xhs_account_id" 
+                            required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="account_1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">账户名称 *</label>
+                        <input 
+                            type="text" 
+                            id="xhs_account_name" 
+                            required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="账号1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">查询内容</label>
+                        <input 
+                            type="text" 
+                            id="user_query" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="开始运营">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">帖子主题</label>
+                        <input 
+                            type="text" 
+                            id="user_topic" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="科技">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">内容风格</label>
+                        <input 
+                            type="text" 
+                            id="user_style" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="专业">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">目标受众</label>
+                        <input 
+                            type="text" 
+                            id="user_target_audience" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="技术爱好者">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">执行间隔（秒）</label>
+                        <input 
+                            type="number" 
+                            id="interval" 
+                            value="3600"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="3600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">有效时间范围</label>
+                        <div class="flex items-center gap-2">
+                            <input 
+                                type="number" 
+                                id="valid_time_start" 
+                                value="8"
+                                min="0"
+                                max="23"
+                                class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="8">
+                            <span class="text-gray-500">-</span>
+                            <input 
+                                type="number" 
+                                id="valid_time_end" 
+                                value="22"
+                                min="0"
+                                max="23"
+                                class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="22">
+                            <span class="text-gray-500 text-sm">时</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">任务结束时间</label>
+                        <input 
+                            type="date" 
+                            id="task_end_time" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button 
+                        type="submit"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                        创建任务
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 消息提示 -->
+        <div id="messageToast" class="fixed top-4 right-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-lg p-4 border-l-4" id="toastContent">
+                <div class="flex items-center">
+                    <span id="toastMessage" class="text-sm font-medium"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 确认对话框 -->
+        <div id="confirmDialog" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2" id="confirmTitle">确认操作</h3>
+                <p class="text-gray-600 mb-4" id="confirmMessage"></p>
+                <div class="flex justify-end gap-2">
+                    <button onclick="closeConfirmDialog()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        取消
+                    </button>
+                    <button id="confirmBtn" onclick="executeConfirm()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        确认
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑任务弹窗 -->
+        <div id="editTaskDialog" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                <!-- 弹窗头部 -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">编辑任务</h3>
+                        <p class="text-sm text-gray-500 mt-1">任务ID: <span id="editTaskId" class="font-mono"></span></p>
+                    </div>
+                    <button onclick="closeEditTaskDialog()" class="text-gray-400 hover:text-gray-600 transition-colors text-2xl font-bold leading-none">&times;</button>
+                </div>
+                
+                <!-- 编辑表单 -->
+                <form id="editTaskForm" onsubmit="submitEditTask(event)" class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">查询内容</label>
+                            <input 
+                                type="text" 
+                                id="edit_user_query" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="开始运营">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">帖子主题</label>
+                            <input 
+                                type="text" 
+                                id="edit_user_topic" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="科技">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">内容风格</label>
+                            <input 
+                                type="text" 
+                                id="edit_user_style" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="专业">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">目标受众</label>
+                            <input 
+                                type="text" 
+                                id="edit_user_target_audience" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="技术爱好者">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">执行间隔（秒）</label>
+                            <input 
+                                type="number" 
+                                id="edit_interval" 
+                                min="60"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="3600">
+                            <p class="text-xs text-gray-500 mt-1">最小值为 60 秒</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">有效时间范围</label>
+                            <div class="flex items-center gap-2">
+                                <input 
+                                    type="number" 
+                                    id="edit_valid_time_start" 
+                                    min="0"
+                                    max="23"
+                                    class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="8">
+                                <span class="text-gray-500">-</span>
+                                <input 
+                                    type="number" 
+                                    id="edit_valid_time_end" 
+                                    min="0"
+                                    max="23"
+                                    class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="22">
+                                <span class="text-gray-500 text-sm">时</span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">任务结束时间</label>
+                            <input 
+                                type="date" 
+                                id="edit_task_end_time" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                        <button 
+                            type="button"
+                            onclick="closeEditTaskDialog()"
+                            class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium">
+                            取消
+                        </button>
+                        <button 
+                            type="submit"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 登录对话框 -->
+        <div id="loginDialog" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+                <!-- 弹窗头部 -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">小红书登录</h3>
+                        <p class="text-sm text-gray-500 mt-1">任务ID: <span id="loginTaskId" class="font-mono"></span></p>
+                    </div>
+                    <button onclick="closeLoginDialog()" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        ✕
+                    </button>
+                </div>
+                
+                <!-- 内容区域 -->
+                <div class="p-6">
+                    <!-- 二维码显示区域 -->
+                    <div class="flex flex-col items-center mb-4">
+                        <div id="qrcodeContainer" class="bg-gray-100 rounded-lg p-4 mb-4 flex items-center justify-center" style="min-height: 300px; width: 100%;">
+                            <div class="text-gray-500 text-center">
+                                <div class="mb-2">加载二维码中...</div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center mb-4">
+                            请使用小红书App扫描上方二维码登录
+                        </p>
+                    </div>
+                    
+                    <!-- 状态提示 -->
+                    <div id="loginStatusMessage" class="mb-4 text-sm text-center">
+                        <span class="text-gray-500">等待扫码...</span>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="flex gap-2">
+                        <button 
+                            onclick="confirmLogin()" 
+                            id="confirmLoginBtn"
+                            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            确认登录
+                        </button>
+                        <button 
+                            onclick="refreshLoginQrcode()" 
+                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                            刷新二维码
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 资源管理弹窗 -->
+        <div id="resourceDialog" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] mx-4 flex flex-col">
+                <!-- 弹窗头部 -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">任务资源管理</h3>
+                        <p class="text-sm text-gray-500 mt-1">任务ID: <span id="resourceTaskId" class="font-mono"></span></p>
+                    </div>
+                    <button onclick="closeResourceDialog()" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                        ✕
+                    </button>
+                </div>
+                
+                <!-- 标签页导航 -->
+                <div class="px-6 py-3 border-b border-gray-200 flex gap-2">
+                    <button onclick="switchResourceTab('images')" id="resourceTabImages" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                        图片
+                    </button>
+                    <button onclick="switchResourceTab('source')" id="resourceTabSource" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium">
+                        知识库
+                    </button>
+                </div>
+                
+                <!-- 内容区域 -->
+                <div class="flex-1 overflow-hidden flex flex-col">
+                    <!-- 图片标签页 -->
+                    <div id="resourceTabImagesContent" class="flex-1 overflow-y-auto p-6 hidden">
+                        <div id="imagesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div class="text-gray-500 text-center py-8 col-span-full">加载图片中...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 知识库标签页 -->
+                    <div id="resourceTabSourceContent" class="flex-1 overflow-hidden flex flex-col hidden">
+                        <div class="px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <button onclick="refreshSourceFile()" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                    刷新
+                                </button>
+                                <button onclick="downloadSourceFile()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+                                    导出
+                                </button>
+                                <label class="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm cursor-pointer">
+                                    <input type="file" id="sourceFileUpload" accept=".md,.txt" class="hidden" onchange="uploadSourceFile(event)">
+                                    导入
+                                </label>
+                                <button onclick="saveSourceFile()" class="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm">
+                                    保存
+                                </button>
+                            </div>
+                            <div class="text-sm text-gray-500" id="sourceFileInfo">文件大小: 0 KB</div>
+                        </div>
+                        <div class="flex-1 overflow-hidden flex">
+                            <textarea 
+                                id="sourceFileEditor" 
+                                class="flex-1 p-4 border-0 focus:ring-0 focus:outline-none font-mono text-sm resize-none"
+                                placeholder="加载知识库文件..."
+                                spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日志查看器弹窗 -->
+        <div id="logViewerDialog" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] mx-4 flex flex-col">
+                <!-- 弹窗头部 -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900" id="logViewerTitle">任务日志</h3>
+                        <p class="text-sm text-gray-500 mt-1" id="logViewerSubtitle">任务ID: <span id="logViewerTaskId" class="font-mono"></span></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="logLevelFilter" onchange="filterLogsByLevel()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">全部级别</option>
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                            <option value="CRITICAL">CRITICAL</option>
+                        </select>
+                        <input 
+                            type="text" 
+                            id="logSearchInput" 
+                            placeholder="搜索日志..." 
+                            oninput="searchLogs()"
+                            class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48">
+                        <button onclick="clearLogViewer()" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                            清空显示
+                        </button>
+                        <button onclick="refreshTaskLogs()" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                            刷新
+                        </button>
+                        <button onclick="closeLogViewer()" class="px-3 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 日志内容区 -->
+                <div class="flex-1 overflow-hidden flex flex-col">
+                    <div id="logViewerContent" class="flex-1 overflow-y-auto bg-gray-900 text-gray-100 p-4 font-mono text-sm">
+                        <div class="text-gray-500 text-center py-8">加载日志中...</div>
+                    </div>
+                    
+                    <!-- 底部状态栏 -->
+                    <div class="px-4 py-2 bg-gray-100 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
+                        <div class="flex items-center gap-4">
+                            <span>总日志数: <span id="logTotalCount" class="font-semibold">0</span></span>
+                            <span>显示: <span id="logDisplayCount" class="font-semibold">0</span></span>
+                            <label class="flex items-center gap-1">
+                                <input type="checkbox" id="logAutoScroll" checked onchange="toggleAutoScroll()">
+                                <span>自动滚动</span>
+                            </label>
+                            <label class="flex items-center gap-1">
+                                <input type="checkbox" id="logAutoRefresh" onchange="toggleAutoRefresh()">
+                                <span>自动刷新 (3秒)</span>
+                            </label>
+                        </div>
+                        <div id="logViewerStatus" class="text-gray-500">就绪</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API 基础配置
+        // 检测访问方式并设置正确的 API 地址
+        let API_BASE;
+        if (window.location.protocol === 'file:') {
+            // 从文件系统打开（file:// 协议），使用完整 API 地址
+            API_BASE = 'http://localhost:8000/api/v1';
+            console.warn('⚠️ 检测到 file:// 协议，建议通过 http://localhost:8000/ 访问以获得更好的体验');
+        } else if (window.location.port === '63342' || (window.location.hostname === 'localhost' && window.location.port !== '8000' && window.location.port !== '')) {
+            // 通过 IntelliJ 内置服务器或其他非 8000 端口访问
+            API_BASE = 'http://localhost:8000/api/v1';
+        } else {
+            // 通过 FastAPI 服务访问（端口 8000 或生产环境）
+            API_BASE = '/api/v1';
+        }
+        
+        const APP_VERSION = '1.0.2'; // 版本号，用于强制刷新缓存
+        let refreshInterval = null;
+        let confirmCallback = null;
+        
+        console.log('应用版本:', APP_VERSION);
+        console.log('当前页面地址:', window.location.href);
+        console.log('API 基础路径:', API_BASE);
+
+        // 统一的 API 调用函数
+        async function apiCall(method, endpoint, data = null, timeoutMs = 60000) {
+            try {
+                // 检查是否从 file:// 协议访问（浏览器会阻止跨域请求）
+                if (window.location.protocol === 'file:') {
+                    throw new Error('❌ 无法从文件系统直接打开页面。请通过 http://localhost:8000/ 访问页面。');
+                }
+                
+                // 检查 API_BASE 是否可用
+                if (!API_BASE) {
+                    throw new Error('API 基础路径未配置，请通过 http://localhost:8000/ 访问页面');
+                }
+                
+                const url = `${API_BASE}${endpoint}`;
+                console.log(`[apiCall] ${method} ${url}, timeout: ${timeoutMs}ms`);
+                
+                // 对于执行任务的请求，使用更长的超时时间（30分钟）
+                if (endpoint.includes('/execute')) {
+                    timeoutMs = 1800000; // 30分钟
+                    console.log(`[apiCall] 检测到执行任务请求，使用长超时时间: ${timeoutMs}ms (30分钟)`);
+                }
+                
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors', // 明确启用 CORS
+                    credentials: 'omit' // 不发送 cookies
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                // 使用 AbortController 实现超时控制
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                
+                options.signal = controller.signal;
+                const response = await fetch(url, options);
+                clearTimeout(timeoutId);
+                
+                // 检查响应类型
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                // 读取响应文本
+                const text = await response.text();
+                const trimmedText = text.trim();
+                
+                // 检查是否是 HTML（多种方式检测）
+                const isHtml = trimmedText.toLowerCase().startsWith('<!doctype') || 
+                              trimmedText.toLowerCase().startsWith('<html') ||
+                              trimmedText.startsWith('<!DOCTYPE') || 
+                              trimmedText.startsWith('<!doctype') ||
+                              trimmedText.startsWith('<html') ||
+                              trimmedText.startsWith('<HTML') ||
+                              (trimmedText.length > 0 && trimmedText[0] === '<' && trimmedText.includes('html'));
+                
+                if (isHtml) {
+                    console.error('服务器返回了 HTML 响应:');
+                    console.error('URL:', `${API_BASE}${endpoint}`);
+                    console.error('响应内容:', trimmedText.substring(0, 500));
+                    throw new Error(`服务器返回了 HTML 响应 (${response.status}): 可能是路径错误或服务器配置问题。请求路径: ${API_BASE}${endpoint}`);
+                }
+                
+                // 尝试解析 JSON
+                if (!trimmedText) {
+                    // 空响应
+                    result = {};
+                } else {
+                    try {
+                        result = JSON.parse(text);
+                    } catch (parseError) {
+                        // JSON 解析失败
+                        const errorMsg = parseError.message || '';
+                        
+                        // 检查错误消息中是否包含 HTML 相关的提示
+                        if (errorMsg.includes('<!doctype') || 
+                            errorMsg.includes('<!DOCTYPE') || 
+                            errorMsg.includes('DOCTYPE') ||
+                            errorMsg.toLowerCase().includes('doctype') ||
+                            (errorMsg.includes('Unexpected token') && (errorMsg.includes('<') || errorMsg.includes('<!')))) {
+                            console.error('JSON 解析失败，检测到 HTML 响应:');
+                            console.error('URL:', `${API_BASE}${endpoint}`);
+                            console.error('响应内容:', trimmedText.substring(0, 500));
+                            throw new Error(`服务器返回了 HTML 响应 (${response.status}): 可能是路径错误或服务器配置问题。请求路径: ${API_BASE}${endpoint}`);
+                        }
+                        
+                        // 其他 JSON 解析错误
+                        console.error('JSON 解析失败:', parseError);
+                        console.error('URL:', `${API_BASE}${endpoint}`);
+                        console.error('响应内容:', trimmedText.substring(0, 300));
+                        throw new Error(`响应解析失败 (${response.status}): ${parseError.message}`);
+                    }
+                }
+                
+                if (!response.ok) {
+                    throw new Error(result.error || result.detail || `请求失败: ${response.status}`);
+                }
+                
+                return result;
+            } catch (error) {
+                // 确保清理超时定时器（如果存在）
+                if (typeof timeoutId !== 'undefined') {
+                    clearTimeout(timeoutId);
+                }
+                if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                    throw new Error(`请求超时（超过 ${timeoutMs / 1000} 秒）。对于长时间运行的任务，这是正常的，请查看服务器日志确认任务是否成功完成。`);
+                }
+                console.error('API 调用失败:', error);
+                throw error;
+            }
+        }
+
+        // 显示消息提示
+        function showMessage(message, type = 'info') {
+            const toast = document.getElementById('messageToast');
+            const toastContent = document.getElementById('toastContent');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // 设置颜色
+            const colors = {
+                success: 'border-green-500',
+                error: 'border-red-500',
+                warning: 'border-yellow-500',
+                info: 'border-blue-500'
+            };
+            
+            toastContent.className = `bg-white rounded-lg shadow-lg p-4 border-l-4 ${colors[type]}`;
+            toastMessage.textContent = message;
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // 确认对话框
+        function showConfirmDialog(title, message, callback) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            confirmCallback = callback;
+            document.getElementById('confirmDialog').classList.remove('hidden');
+        }
+
+        function closeConfirmDialog() {
+            document.getElementById('confirmDialog').classList.add('hidden');
+            confirmCallback = null;
+        }
+
+        function executeConfirm() {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+            closeConfirmDialog();
+        }
+
+        // 获取状态标签 HTML
+        function getStatusBadge(status) {
+            const statusMap = {
+                'pending': { text: '等待执行', class: 'status-pending' },
+                'running': { text: '正在执行', class: 'status-running' },
+                'paused': { text: '已暂停', class: 'status-paused' },
+                'completed': { text: '已完成', class: 'status-completed' },
+                'error': { text: '错误', class: 'status-error' }
+            };
+            
+            const statusInfo = statusMap[status] || { text: status, class: 'status-pending' };
+            return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+        }
+
+        // 格式化时间
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return '-';
+            const date = new Date(dateTimeStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 刷新调度器状态
+        async function refreshDispatcherStatus() {
+            try {
+                const status = await apiCall('GET', '/dispatcher/status');
+                
+                document.getElementById('statusText').textContent = status.is_running ? '运行中' : '已停止';
+                document.getElementById('statusText').className = status.is_running 
+                    ? 'font-semibold text-green-600' 
+                    : 'font-semibold text-gray-600';
+                document.getElementById('totalTasks').textContent = status.total_tasks;
+                document.getElementById('runningTasks').textContent = status.running_tasks;
+                
+                // 更新按钮状态
+                document.getElementById('btnStart').disabled = status.is_running;
+                document.getElementById('btnStop').disabled = !status.is_running;
+            } catch (error) {
+                showMessage('获取调度器状态失败: ' + error.message, 'error');
+            }
+        }
+
+        // 启动调度器
+        async function startDispatcher() {
+            try {
+                await apiCall('POST', '/dispatcher/start');
+                showMessage('调度器启动成功', 'success');
+                refreshDispatcherStatus();
+            } catch (error) {
+                showMessage('启动调度器失败: ' + error.message, 'error');
+            }
+        }
+
+        // 停止调度器
+        async function stopDispatcher() {
+            showConfirmDialog('确认停止', '确定要停止调度器吗？当前运行的任务将完成后再停止。', async () => {
+                try {
+                    await apiCall('POST', '/dispatcher/stop');
+                    showMessage('调度器已停止', 'success');
+                    refreshDispatcherStatus();
+                } catch (error) {
+                    showMessage('停止调度器失败: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // 刷新任务列表
+        async function refreshTaskList() {
+            try {
+                const filterStatus = document.getElementById('filterStatus')?.value || '';
+                const filterAccount = document.getElementById('filterAccount')?.value || '';
+                
+                let url = '/tasks/?limit=1000';
+                if (filterStatus) url += `&status=${filterStatus}`;
+                if (filterAccount) url += `&account_id=${filterAccount}`;
+                
+                console.log('[refreshTaskList] 请求 URL:', API_BASE + url);
+                const result = await apiCall('GET', url);
+                console.log('[refreshTaskList] 响应结果:', result);
+                
+                if (result && typeof result === 'object' && 'tasks' in result) {
+                    renderTaskList(result.tasks || []);
+                    updateAccountFilter(result.tasks || []);
+                } else {
+                    console.error('[refreshTaskList] 返回数据格式不正确:', result);
+                    throw new Error('返回数据格式不正确: 缺少 tasks 字段');
+                }
+            } catch (error) {
+                console.error('[refreshTaskList] 刷新任务列表失败:', error);
+                console.error('[refreshTaskList] 错误堆栈:', error.stack);
+                const errorMsg = error.message || '未知错误';
+                showMessage('获取任务列表失败: ' + errorMsg, 'error');
+                const tbody = document.getElementById('taskTableBody');
+                if (tbody) {
+                    tbody.innerHTML = 
+                        '<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">加载失败: ' + errorMsg + '</td></tr>';
+                }
+            }
+        }
+
+        // 渲染任务列表
+        function renderTaskList(tasks) {
+            const tbody = document.getElementById('taskTableBody');
+            
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">暂无任务</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = tasks.map(task => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">${task.task_id.substring(0, 8)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div class="flex items-center gap-2">
+                            <span>${task.account_name || task.account_id}</span>
+                            ${task.login_status !== undefined && task.login_status !== null 
+                                ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    task.login_status 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-red-100 text-red-800'
+                                }" title="${task.login_status ? '已登录' : '未登录，请点击登录按钮扫码登录'}">
+                                    ${task.login_status ? '✓ 已登录' : '✗ 未登录'}
+                                </span>`
+                                : '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600" title="登录状态未知">-</span>'
+                            }
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getStatusBadge(task.status)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDateTime(task.next_execution_time)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.round_num || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <div class="flex gap-2 flex-wrap">
+                            ${task.status !== 'completed' && task.status !== 'running'
+                                ? `<button onclick="executeTask('${task.task_id}')" class="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors disabled:opacity-50" title="立即执行任务（不等待调度器调度）">立即执行</button>`
+                                : task.status === 'running'
+                                ? `<span class="px-2 py-1 bg-gray-400 text-white rounded text-xs cursor-not-allowed" title="任务正在执行中">执行中</span>`
+                                : ''}
+                            ${task.status === 'paused' 
+                                ? `<button onclick="resumeTask('${task.task_id}')" class="px-2 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded text-xs transition-colors">恢复</button>`
+                                : task.status === 'pending' || task.status === 'running'
+                                ? `<button onclick="pauseTask('${task.task_id}')" class="px-2 py-1 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded text-xs transition-colors" title="${task.status === 'running' ? '暂停任务（当前执行不会中断，下次调度时不再执行）' : '暂停任务'}">暂停</button>`
+                                : ''}
+                            <button onclick="editTask('${task.task_id}')" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition-colors" title="编辑任务属性">编辑</button>
+                            <button onclick="showLoginDialog('${task.task_id}')" class="px-2 py-1 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 transition-colors" title="小红书登录">登录</button>
+                            <button onclick="showTaskResources('${task.task_id}')" class="px-2 py-1 bg-amber-600 text-white rounded text-xs hover:bg-amber-700 transition-colors" title="查看任务资源">资源</button>
+                            <button onclick="showTaskLogs('${task.task_id}')" class="px-2 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 transition-colors" title="查看任务日志">日志</button>
+                            <button onclick="showTaskDetails('${task.task_id}')" class="px-2 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded text-xs transition-colors">详情</button>
+                            <button onclick="deleteTaskConfirm('${task.task_id}')" class="px-2 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded text-xs transition-colors">删除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 更新账户筛选器
+        function updateAccountFilter(tasks) {
+            const accountSelect = document.getElementById('filterAccount');
+            const accounts = [...new Set(tasks.map(t => t.account_id))].sort();
+            
+            // 保留"全部账户"选项
+            accountSelect.innerHTML = '<option value="">全部账户</option>';
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account;
+                option.textContent = account;
+                accountSelect.appendChild(option);
+            });
+        }
+
+        // 筛选任务
+        function filterTasks() {
+            refreshTaskList();
+        }
+
+        // 暂停任务
+        async function pauseTask(taskId) {
+            try {
+                await apiCall('POST', `/tasks/${taskId}/pause`);
+                showMessage('任务已暂停', 'success');
+                refreshTaskList();
+                refreshDispatcherStatus();
+            } catch (error) {
+                showMessage('暂停任务失败: ' + error.message, 'error');
+            }
+        }
+
+        // 恢复任务
+        async function resumeTask(taskId) {
+            try {
+                await apiCall('POST', `/tasks/${taskId}/resume`);
+                showMessage('任务已恢复', 'success');
+                refreshTaskList();
+                refreshDispatcherStatus();
+            } catch (error) {
+                showMessage('恢复任务失败: ' + error.message, 'error');
+            }
+        }
+
+        // 立即执行任务
+        function executeTask(taskId) {
+            showConfirmDialog(
+                '立即执行任务', 
+                '确定要立即执行这个任务吗？任务将立即开始执行，不会等待调度器调度。',
+                async () => {
+                    try {
+                        showMessage('正在执行任务，这可能需要几分钟时间，请耐心等待...', 'info');
+                        
+                        // 调用立即执行接口（使用默认参数，更新下次执行时间）
+                        // 注意：对于执行任务请求，apiCall 会自动使用 30 分钟超时
+                        const result = await apiCall('POST', `/tasks/${taskId}/execute`, {
+                            update_next_execution_time: true
+                        });
+                        
+                        // 显示执行结果
+                        const duration = result.duration_seconds ? result.duration_seconds.toFixed(2) : 'N/A';
+                        const nextTime = result.next_execution_time ? formatDateTime(result.next_execution_time) : '未更新';
+                        const message = `✅ 任务执行成功！耗时: ${duration}秒，下次执行时间: ${nextTime}`;
+                        showMessage(message, 'success');
+                        
+                        // 刷新任务列表和调度器状态
+                        refreshTaskList();
+                        refreshDispatcherStatus();
+                    } catch (error) {
+                        if (error.message.includes('请求超时')) {
+                            showMessage('⚠️ ' + error.message + ' 请查看服务器日志确认任务执行状态。', 'warning');
+                        } else {
+                            showMessage('立即执行任务失败: ' + error.message, 'error');
+                        }
+                    }
+                }
+            );
+        }
+
+        // 删除任务确认
+        function deleteTaskConfirm(taskId) {
+            showConfirmDialog('确认删除', '确定要删除这个任务吗？此操作不可恢复。', async () => {
+                try {
+                    await apiCall('DELETE', `/tasks/${taskId}`);
+                    showMessage('任务已删除', 'success');
+                    refreshTaskList();
+                    refreshDispatcherStatus();
+                } catch (error) {
+                    showMessage('删除任务失败: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // 显示任务详情
+        async function showTaskDetails(taskId) {
+            try {
+                const task = await apiCall('GET', `/tasks/${taskId}`);
+                const details = `
+任务ID: ${task.task_id}
+账户ID: ${task.account_id}
+账户名称: ${task.account_name}
+任务类型: ${task.task_type}
+状态: ${task.status}
+执行间隔: ${task.interval}秒
+有效时间范围: ${task.valid_time_range[0]}:00 - ${task.valid_time_range[1]}:00
+任务结束时间: ${task.task_end_time}
+上次执行时间: ${formatDateTime(task.last_execution_time)}
+下次执行时间: ${formatDateTime(task.next_execution_time)}
+执行轮次: ${task.round_num || 0}
+创建时间: ${formatDateTime(task.created_at)}
+更新时间: ${formatDateTime(task.updated_at)}
+                `.trim();
+                
+                alert(details);
+            } catch (error) {
+                showMessage('获取任务详情失败: ' + error.message, 'error');
+            }
+        }
+
+        // 编辑任务
+        let currentEditTaskId = null;
+
+        async function editTask(taskId) {
+            try {
+                currentEditTaskId = taskId;
+                document.getElementById('editTaskId').textContent = taskId;
+                
+                // 获取任务详情
+                const task = await apiCall('GET', `/tasks/${taskId}`);
+                
+                // 填充表单数据
+                // 从 kwargs 中获取可编辑的属性
+                const kwargs = task.kwargs || {};
+                
+                document.getElementById('edit_user_query').value = kwargs.user_query || '';
+                document.getElementById('edit_user_topic').value = kwargs.user_topic || '';
+                document.getElementById('edit_user_style').value = kwargs.user_style || '';
+                document.getElementById('edit_user_target_audience').value = kwargs.user_target_audience || '';
+                document.getElementById('edit_interval').value = task.interval || 3600;
+                
+                // 有效时间范围
+                const validTimeRange = task.valid_time_range || [8, 22];
+                document.getElementById('edit_valid_time_start').value = validTimeRange[0] || 8;
+                document.getElementById('edit_valid_time_end').value = validTimeRange[1] || 22;
+                
+                // 任务结束时间
+                if (task.task_end_time) {
+                    // 如果 task_end_time 是 ISO 格式字符串，提取日期部分
+                    const endTime = task.task_end_time.split('T')[0];
+                    document.getElementById('edit_task_end_time').value = endTime;
+                } else {
+                    document.getElementById('edit_task_end_time').value = '';
+                }
+                
+                // 显示对话框
+                document.getElementById('editTaskDialog').classList.remove('hidden');
+            } catch (error) {
+                showMessage('获取任务信息失败: ' + error.message, 'error');
+            }
+        }
+
+        function closeEditTaskDialog() {
+            document.getElementById('editTaskDialog').classList.add('hidden');
+            document.getElementById('editTaskForm').reset();
+            currentEditTaskId = null;
+        }
+
+        async function submitEditTask(event) {
+            event.preventDefault();
+            
+            if (!currentEditTaskId) {
+                showMessage('任务ID不存在', 'error');
+                return;
+            }
+            
+            try {
+                // 构建更新数据（只包含有值的字段）
+                const updateData = {};
+                
+                const userQuery = document.getElementById('edit_user_query').value.trim();
+                if (userQuery) {
+                    updateData.user_query = userQuery;
+                }
+                
+                const userTopic = document.getElementById('edit_user_topic').value.trim();
+                if (userTopic) {
+                    updateData.user_topic = userTopic;
+                }
+                
+                const userStyle = document.getElementById('edit_user_style').value.trim();
+                if (userStyle) {
+                    updateData.user_style = userStyle;
+                }
+                
+                const userTargetAudience = document.getElementById('edit_user_target_audience').value.trim();
+                if (userTargetAudience) {
+                    updateData.user_target_audience = userTargetAudience;
+                }
+                
+                const interval = parseInt(document.getElementById('edit_interval').value);
+                if (interval && interval >= 60) {
+                    updateData.interval = interval;
+                }
+                
+                const validTimeStart = parseInt(document.getElementById('edit_valid_time_start').value);
+                const validTimeEnd = parseInt(document.getElementById('edit_valid_time_end').value);
+                if (validTimeStart >= 0 && validTimeStart < 24 && validTimeEnd >= 0 && validTimeEnd < 24 && validTimeStart < validTimeEnd) {
+                    updateData.valid_time_range = [validTimeStart, validTimeEnd];
+                }
+                
+                const taskEndTime = document.getElementById('edit_task_end_time').value;
+                if (taskEndTime) {
+                    updateData.task_end_time = taskEndTime;
+                }
+                
+                // 检查是否有要更新的字段
+                if (Object.keys(updateData).length === 0) {
+                    showMessage('请至少修改一个字段', 'warning');
+                    return;
+                }
+                
+                // 调用更新 API
+                showMessage('正在更新任务...', 'info');
+                await apiCall('PATCH', `/tasks/${currentEditTaskId}`, updateData);
+                
+                showMessage('任务更新成功', 'success');
+                
+                // 关闭对话框
+                closeEditTaskDialog();
+                
+                // 刷新任务列表
+                refreshTaskList();
+                refreshDispatcherStatus();
+            } catch (error) {
+                showMessage('更新任务失败: ' + error.message, 'error');
+            }
+        }
+
+        // 创建任务
+        async function createTask(event) {
+            event.preventDefault();
+            
+            const formData = {
+                sys_type: 'mac_intel',
+                task_type: 'xhs_type',
+                xhs_account_id: document.getElementById('xhs_account_id').value,
+                xhs_account_name: document.getElementById('xhs_account_name').value,
+                user_query: document.getElementById('user_query').value || null,
+                user_topic: document.getElementById('user_topic').value || null,
+                user_style: document.getElementById('user_style').value || null,
+                user_target_audience: document.getElementById('user_target_audience').value || null,
+                interval: parseInt(document.getElementById('interval').value) || 3600,
+                valid_time_range: [
+                    parseInt(document.getElementById('valid_time_start').value) || 8,
+                    parseInt(document.getElementById('valid_time_end').value) || 22
+                ]
+            };
+            
+            const endTime = document.getElementById('task_end_time').value;
+            if (endTime) {
+                formData.task_end_time = endTime;
+            }
+            
+            try {
+                const result = await apiCall('POST', '/tasks/', formData);
+                showMessage('任务创建成功', 'success');
+                document.getElementById('createTaskForm').reset();
+                refreshTaskList();
+                refreshDispatcherStatus();
+            } catch (error) {
+                showMessage('创建任务失败: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== 登录管理相关函数 ====================
+        let currentLoginTaskId = null;
+        let loginCheckInterval = null;
+
+        // 显示登录对话框
+        async function showLoginDialog(taskId) {
+            currentLoginTaskId = taskId;
+            document.getElementById('loginTaskId').textContent = taskId;
+            document.getElementById('loginDialog').classList.remove('hidden');
+            
+            // 加载二维码
+            await loadLoginQrcode(taskId);
+        }
+
+        // 关闭登录对话框
+        function closeLoginDialog() {
+            document.getElementById('loginDialog').classList.add('hidden');
+            currentLoginTaskId = null;
+            
+            // 停止轮询
+            if (loginCheckInterval) {
+                clearInterval(loginCheckInterval);
+                loginCheckInterval = null;
+            }
+            
+            // 清空内容
+            document.getElementById('qrcodeContainer').innerHTML = '<div class="text-gray-500 text-center"><div class="mb-2">加载二维码中...</div></div>';
+            document.getElementById('loginStatusMessage').innerHTML = '<span class="text-gray-500">等待扫码...</span>';
+        }
+
+        // 加载登录二维码
+        async function loadLoginQrcode(taskId) {
+            if (!taskId) return;
+            
+            const container = document.getElementById('qrcodeContainer');
+            const statusMessage = document.getElementById('loginStatusMessage');
+            
+            container.innerHTML = '<div class="text-gray-500 text-center"><div class="mb-2">加载二维码中...</div></div>';
+            statusMessage.innerHTML = '<span class="text-gray-500">正在获取二维码...</span>';
+            
+            try {
+                const result = await apiCall('GET', `/tasks/${taskId}/login/qrcode`);
+                
+                if (result.qrcode_url) {
+                    container.innerHTML = `<img src="${result.qrcode_url}" alt="登录二维码" class="max-w-full h-auto rounded-lg" style="max-height: 300px;">`;
+                    statusMessage.innerHTML = '<span class="text-blue-600">请使用小红书App扫描二维码登录</span>';
+                } else {
+                    container.innerHTML = '<div class="text-red-500 text-center"><div class="mb-2">获取二维码失败</div></div>';
+                    statusMessage.innerHTML = '<span class="text-red-500">获取二维码失败，请重试</span>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="text-red-500 text-center"><div class="mb-2">加载失败</div></div>';
+                statusMessage.innerHTML = `<span class="text-red-500">加载二维码失败: ${error.message}</span>`;
+                showMessage('加载二维码失败: ' + error.message, 'error');
+            }
+        }
+
+        // 刷新登录二维码
+        async function refreshLoginQrcode() {
+            if (!currentLoginTaskId) return;
+            await loadLoginQrcode(currentLoginTaskId);
+            showMessage('二维码已刷新', 'success');
+        }
+
+        // 检查登录状态
+        async function checkLoginStatus(taskId) {
+            if (!taskId) return false;
+            
+            try {
+                const result = await apiCall('GET', `/tasks/${taskId}/login/status`);
+                return result.is_logged_in || false;
+            } catch (error) {
+                console.error('检查登录状态失败:', error);
+                return false;
+            }
+        }
+
+        // 确认登录
+        async function confirmLogin() {
+            if (!currentLoginTaskId) return;
+            
+            const statusMessage = document.getElementById('loginStatusMessage');
+            const confirmBtn = document.getElementById('confirmLoginBtn');
+            
+            statusMessage.innerHTML = '<span class="text-blue-600">正在检查登录状态...</span>';
+            confirmBtn.disabled = true;
+            
+            try {
+                const result = await apiCall('POST', `/tasks/${currentLoginTaskId}/login/confirm`);
+                
+                if (result.is_logged_in) {
+                    statusMessage.innerHTML = '<span class="text-green-600 font-semibold">✓ 登录成功！</span>';
+                    showMessage('登录成功', 'success');
+                    
+                    // 2秒后自动关闭对话框
+                    setTimeout(() => {
+                        closeLoginDialog();
+                    }, 2000);
+                } else {
+                    statusMessage.innerHTML = '<span class="text-red-500">登录失败，请重新扫码后再次确认</span>';
+                    showMessage('登录失败，请重新扫码', 'error');
+                }
+            } catch (error) {
+                statusMessage.innerHTML = `<span class="text-red-500">检查登录状态失败: ${error.message}</span>`;
+                showMessage('检查登录状态失败: ' + error.message, 'error');
+            } finally {
+                confirmBtn.disabled = false;
+            }
+        }
+
+        // ==================== 资源管理相关函数 ====================
+        let currentResourceTaskId = null;
+        let currentResourceTab = 'images';
+
+        // 显示任务资源管理
+        async function showTaskResources(taskId) {
+            currentResourceTaskId = taskId;
+            document.getElementById('resourceTaskId').textContent = taskId;
+            document.getElementById('resourceDialog').classList.remove('hidden');
+            
+            // 默认显示图片标签页
+            switchResourceTab('images');
+        }
+
+        // 关闭资源管理对话框
+        function closeResourceDialog() {
+            document.getElementById('resourceDialog').classList.add('hidden');
+            currentResourceTaskId = null;
+            // 清空内容
+            document.getElementById('imagesContainer').innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">加载图片中...</div>';
+            document.getElementById('sourceFileEditor').value = '';
+        }
+
+        // 切换资源标签页
+        function switchResourceTab(tab) {
+            currentResourceTab = tab;
+            
+            // 更新标签页按钮样式
+            document.getElementById('resourceTabImages').className = tab === 'images' 
+                ? 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium'
+                : 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium';
+            document.getElementById('resourceTabSource').className = tab === 'source'
+                ? 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium'
+                : 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium';
+            
+            // 显示/隐藏内容区域
+            if (tab === 'images') {
+                document.getElementById('resourceTabImagesContent').classList.remove('hidden');
+                document.getElementById('resourceTabSourceContent').classList.add('hidden');
+                loadImages();
+            } else {
+                document.getElementById('resourceTabImagesContent').classList.add('hidden');
+                document.getElementById('resourceTabSourceContent').classList.remove('hidden');
+                loadSourceFile();
+            }
+        }
+
+        // 加载图片列表
+        async function loadImages() {
+            if (!currentResourceTaskId) return;
+            
+            const container = document.getElementById('imagesContainer');
+            container.innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">加载图片中...</div>';
+            
+            try {
+                const result = await apiCall('GET', `/tasks/${currentResourceTaskId}/resources/images`);
+                const images = result.images || [];
+                
+                if (images.length === 0) {
+                    container.innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">暂无图片</div>';
+                    return;
+                }
+                
+                container.innerHTML = images.map(image => `
+                    <div class="bg-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group" onclick="viewImage('${currentResourceTaskId}', '${image.filename}')">
+                        <div class="aspect-square bg-gray-200 flex items-center justify-center overflow-hidden">
+                            <img 
+                                src="${API_BASE}/tasks/${currentResourceTaskId}/resources/images/${image.filename}" 
+                                alt="${image.filename}"
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                loading="lazy"
+                                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E图片加载失败%3C/text%3E%3C/svg%3E'">
+                        </div>
+                        <div class="p-3">
+                            <p class="text-sm font-medium text-gray-900 truncate" title="${image.filename}">${image.filename}</p>
+                            <p class="text-xs text-gray-500 mt-1">${formatFileSize(image.size || 0)}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="text-red-500 text-center py-8 col-span-full">加载图片失败: ${error.message}</div>`;
+            }
+        }
+
+        // 查看图片（大图预览）
+        function viewImage(taskId, filename) {
+            const imageUrl = `${API_BASE}/tasks/${taskId}/resources/images/${filename}`;
+            window.open(imageUrl, '_blank');
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 加载知识库文件
+        async function loadSourceFile() {
+            if (!currentResourceTaskId) return;
+            
+            const editor = document.getElementById('sourceFileEditor');
+            const info = document.getElementById('sourceFileInfo');
+            
+            editor.value = '';
+            info.textContent = '加载中...';
+            
+            try {
+                const result = await apiCall('GET', `/tasks/${currentResourceTaskId}/resources/source`);
+                editor.value = result.content || '';
+                info.textContent = `文件大小: ${formatFileSize(result.size || 0)}`;
+            } catch (error) {
+                editor.value = `// 加载失败: ${error.message}`;
+                info.textContent = '加载失败';
+                showMessage('加载知识库文件失败: ' + error.message, 'error');
+            }
+        }
+
+        // 刷新知识库文件
+        async function refreshSourceFile() {
+            await loadSourceFile();
+            showMessage('知识库文件已刷新', 'success');
+        }
+
+        // 保存知识库文件
+        async function saveSourceFile() {
+            if (!currentResourceTaskId) return;
+            
+            const editor = document.getElementById('sourceFileEditor');
+            const content = editor.value;
+            
+            try {
+                await apiCall('PUT', `/tasks/${currentResourceTaskId}/resources/source`, { content });
+                showMessage('知识库文件保存成功', 'success');
+                // 重新加载以获取文件信息
+                await loadSourceFile();
+            } catch (error) {
+                showMessage('保存知识库文件失败: ' + error.message, 'error');
+            }
+        }
+
+        // 下载知识库文件
+        async function downloadSourceFile() {
+            if (!currentResourceTaskId) return;
+            
+            try {
+                const url = `${API_BASE}/tasks/${currentResourceTaskId}/resources/source/download`;
+                window.open(url, '_blank');
+            } catch (error) {
+                showMessage('下载知识库文件失败: ' + error.message, 'error');
+            }
+        }
+
+        // 上传知识库文件
+        async function uploadSourceFile(event) {
+            if (!currentResourceTaskId) return;
+            
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_BASE}/tasks/${currentResourceTaskId}/resources/source/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.detail || result.error || '上传失败');
+                }
+                
+                showMessage('知识库文件上传成功', 'success');
+                // 重新加载文件内容
+                await loadSourceFile();
+            } catch (error) {
+                showMessage('上传知识库文件失败: ' + error.message, 'error');
+            } finally {
+                // 清空文件选择
+                event.target.value = '';
+            }
+        }
+
+        // ==================== 日志查看器相关函数 ====================
+        let currentLogTaskId = null;
+        let logAutoRefreshInterval = null;
+        let lastLogTimestamp = null;
+        let allLogs = [];  // 存储所有日志（用于前端过滤和搜索）
+
+        // 显示任务日志查看器
+        async function showTaskLogs(taskId) {
+            currentLogTaskId = taskId;
+            lastLogTimestamp = null;  // 重置时间戳，加载所有日志
+            allLogs = [];
+            
+            // 重置过滤条件
+            document.getElementById('logLevelFilter').value = '';
+            document.getElementById('logSearchInput').value = '';
+            
+            document.getElementById('logViewerTaskId').textContent = taskId.substring(0, 16) + '...';
+            document.getElementById('logViewerDialog').classList.remove('hidden');
+            
+            // 加载日志
+            await refreshTaskLogs();
+            
+            // 如果自动刷新已启用，开始轮询
+            if (document.getElementById('logAutoRefresh').checked) {
+                toggleAutoRefresh();  // 这会重新启动定时器
+            }
+        }
+
+        // 关闭日志查看器
+        function closeLogViewer() {
+            document.getElementById('logViewerDialog').classList.add('hidden');
+            currentLogTaskId = null;
+            lastLogTimestamp = null;
+            allLogs = [];
+            
+            // 停止自动刷新
+            if (logAutoRefreshInterval) {
+                clearInterval(logAutoRefreshInterval);
+                logAutoRefreshInterval = null;
+            }
+        }
+
+        // 清空日志显示（不清空后端日志）
+        function clearLogViewer() {
+            allLogs = [];
+            renderLogs();
+            showMessage('日志显示已清空（后端日志不受影响）', 'info');
+        }
+
+        // 刷新任务日志
+        async function refreshTaskLogs() {
+            if (!currentLogTaskId) return;
+            
+            try {
+                const statusEl = document.getElementById('logViewerStatus');
+                statusEl.textContent = '加载中...';
+                
+                // 构建查询参数
+                const params = new URLSearchParams();
+                params.append('limit', '500');  // 每次最多获取500条
+                
+                // 如果是增量刷新（已有日志），只获取新日志
+                // 否则（首次加载或手动刷新），获取所有日志
+                const isIncremental = lastLogTimestamp && allLogs.length > 0;
+                if (isIncremental) {
+                    params.append('since', lastLogTimestamp);
+                }
+                
+                // 注意：级别过滤在前端应用，不传 level 参数，让后端返回所有级别的日志
+                // 这样增量获取时不会遗漏其他级别的日志
+                
+                const result = await apiCall('GET', `/tasks/${currentLogTaskId}/logs?${params.toString()}`);
+                
+                if (result.success && result.logs && result.logs.length > 0) {
+                    if (isIncremental) {
+                        // 增量获取：追加新日志（去重，基于时间戳）
+                        const existingTimestamps = new Set(allLogs.map(log => log.timestamp));
+                        const newLogs = result.logs.filter(log => !existingTimestamps.has(log.timestamp));
+                        allLogs = allLogs.concat(newLogs);
+                    } else {
+                        // 首次加载或全量刷新：替换所有日志
+                        allLogs = result.logs;
+                    }
+                    
+                    // 更新最后一条日志的时间戳
+                    const latestLog = allLogs[allLogs.length - 1];
+                    if (latestLog) {
+                        lastLogTimestamp = latestLog.timestamp;
+                    }
+                    
+                    // 限制前端显示的日志数量（最多保留2000条，避免内存溢出）
+                    if (allLogs.length > 2000) {
+                        allLogs = allLogs.slice(-2000);
+                    }
+                    
+                    // 渲染日志（前端会应用级别过滤和搜索）
+                    renderLogs();
+                    
+                    statusEl.textContent = `已加载 ${result.total} 条日志（显示 ${allLogs.length} 条，过滤后 ${document.getElementById('logDisplayCount').textContent} 条）`;
+                } else if (result.success) {
+                    // 没有新日志
+                    if (isIncremental) {
+                        statusEl.textContent = `已加载 ${result.total} 条日志（无新日志）`;
+                    } else {
+                        statusEl.textContent = '暂无日志';
+                        allLogs = [];
+                        renderLogs();
+                    }
+                } else {
+                    statusEl.textContent = '加载失败';
+                    showMessage('获取日志失败', 'error');
+                }
+            } catch (error) {
+                document.getElementById('logViewerStatus').textContent = '加载失败: ' + error.message;
+                showMessage('刷新日志失败: ' + error.message, 'error');
+            }
+        }
+
+        // 渲染日志到界面
+        function renderLogs() {
+            const container = document.getElementById('logViewerContent');
+            const searchTerm = document.getElementById('logSearchInput').value.toLowerCase();
+            const levelFilter = document.getElementById('logLevelFilter').value;
+            
+            // 过滤日志
+            let filteredLogs = allLogs;
+            
+            // 按级别过滤
+            if (levelFilter) {
+                filteredLogs = filteredLogs.filter(log => log.level === levelFilter);
+            }
+            
+            // 搜索过滤
+            if (searchTerm) {
+                filteredLogs = filteredLogs.filter(log => 
+                    log.message.toLowerCase().includes(searchTerm) ||
+                    log.module.toLowerCase().includes(searchTerm) ||
+                    log.function.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // 更新计数
+            document.getElementById('logTotalCount').textContent = allLogs.length;
+            document.getElementById('logDisplayCount').textContent = filteredLogs.length;
+            
+            // 渲染日志
+            if (filteredLogs.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-8">暂无日志</div>';
+                return;
+            }
+            
+            const logsHtml = filteredLogs.map(log => {
+                const levelClass = getLogLevelClass(log.level);
+                const timestamp = formatLogTimestamp(log.timestamp);
+                const moduleInfo = log.module ? `<span class="text-gray-400">[${escapeHtml(log.module)}]</span>` : '';
+                const functionInfo = log.function ? `<span class="text-gray-400">.${escapeHtml(log.function)}()</span>` : '';
+                
+                // 高亮搜索关键词
+                let message = escapeHtml(log.message);
+                if (searchTerm) {
+                    const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
+                    message = message.replace(regex, '<mark class="bg-yellow-500 text-gray-900">$1</mark>');
+                }
+                
+                return `
+                    <div class="mb-1 hover:bg-gray-800 px-2 py-1 rounded">
+                        <span class="text-gray-500">${timestamp}</span>
+                        <span class="${levelClass} px-2 py-0.5 rounded text-xs font-semibold ml-2">${log.level}</span>
+                        <span class="text-gray-400 ml-2">${moduleInfo}${functionInfo}</span>
+                        <span class="text-gray-100 ml-2">${message}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = logsHtml;
+            
+            // 自动滚动到底部（如果启用）
+            if (document.getElementById('logAutoScroll').checked) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        // 获取日志级别对应的 CSS 类
+        function getLogLevelClass(level) {
+            const classes = {
+                'DEBUG': 'bg-gray-700 text-gray-300',
+                'INFO': 'bg-blue-700 text-blue-100',
+                'WARNING': 'bg-yellow-700 text-yellow-100',
+                'ERROR': 'bg-red-700 text-red-100',
+                'CRITICAL': 'bg-red-900 text-red-100'
+            };
+            return classes[level] || 'bg-gray-700 text-gray-300';
+        }
+
+        // 格式化日志时间戳
+        function formatLogTimestamp(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                }).replace(/\//g, '-');
+            } catch (e) {
+                return timestamp;
+            }
+        }
+
+        // 转义 HTML 特殊字符
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 转义正则表达式特殊字符
+        function escapeRegex(text) {
+            return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // 按级别过滤日志
+        function filterLogsByLevel() {
+            // 当改变级别过滤时，重新加载所有日志（因为后端过滤会影响增量获取）
+            // 但这里我们只在前端过滤，不影响后端获取
+            renderLogs();
+        }
+
+        // 搜索日志
+        function searchLogs() {
+            renderLogs();
+        }
+
+        // 切换自动滚动
+        function toggleAutoScroll() {
+            const checked = document.getElementById('logAutoScroll').checked;
+            if (checked) {
+                const container = document.getElementById('logViewerContent');
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        // 切换自动刷新
+        function toggleAutoRefresh() {
+            const checked = document.getElementById('logAutoRefresh').checked;
+            
+            if (logAutoRefreshInterval) {
+                clearInterval(logAutoRefreshInterval);
+                logAutoRefreshInterval = null;
+            }
+            
+            if (checked && currentLogTaskId) {
+                // 每3秒刷新一次
+                logAutoRefreshInterval = setInterval(() => {
+                    refreshTaskLogs();
+                }, 3000);
+            }
+        }
+
+        // 初始化
+        async function init() {
+            // 检查是否从 file:// 协议访问
+            if (window.location.protocol === 'file:') {
+                const errorMsg = '❌ 检测到从文件系统直接打开页面。\n\n' +
+                               '请通过以下方式访问：\n' +
+                               '1. 确保 API 服务正在运行（运行 ./start_service.sh）\n' +
+                               '2. 在浏览器中访问: http://localhost:8000/\n\n' +
+                               '原因：从文件系统打开会触发浏览器的 CORS 安全限制，无法访问 API 服务。';
+                
+                alert(errorMsg);
+                showMessage('请通过 http://localhost:8000/ 访问页面', 'error');
+                console.error(errorMsg);
+                
+                // 禁用所有交互功能
+                document.body.style.opacity = '0.5';
+                document.body.style.pointerEvents = 'none';
+                return;
+            }
+            
+            // 设置默认结束时间（30天后）
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+            const endTimeInput = document.getElementById('task_end_time');
+            if (endTimeInput) {
+                endTimeInput.value = endDate.toISOString().split('T')[0];
+            }
+            
+            // 加载初始数据
+            try {
+                await refreshDispatcherStatus();
+                await refreshTaskList();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                showMessage('初始化失败: ' + error.message, 'error');
+            }
+            
+            // 设置自动刷新
+            setInterval(refreshDispatcherStatus, 5000); // 每5秒刷新调度器状态
+            setInterval(refreshTaskList, 10000); // 每10秒刷新任务列表
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+

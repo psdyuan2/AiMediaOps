@@ -24,7 +24,7 @@ import os
 import random
 from datetime import time, datetime
 from typing import Any, Dict, List, Optional, Union
-
+from app.data.constants import LogBindType
 # 日志配置导入 - 使用统一的日志管理模块
 from app.core.logger import logger
 from app.utils.poster_creator import create_poster
@@ -128,7 +128,8 @@ class XiaohongshuAgent(BaseAgent):
             user_style: str=None,
             user_target_audience: str=None,
             knowledge_base_path: str = DEFAULT_KNOWLEDGE_PATH,
-            mcp_server_url: str = "http://localhost:18060/mcp"
+            mcp_server_url: str = "http://localhost:18060/mcp",
+            **kwargs
     ) -> None:
         """
         初始化小红书智能体
@@ -151,6 +152,22 @@ class XiaohongshuAgent(BaseAgent):
         self.user_topic = user_topic
         self.user_style = user_style
         self.user_target_audience = user_target_audience
+        self.comment_note_nums = kwargs.get('comment_note_nums', 1)
+        # 任务模式和互动笔记数量
+        from app.data.constants import TaskMode
+        mode_str = kwargs.get('mode', TaskMode.STANDARD.value)
+        if isinstance(mode_str, str):
+            try:
+                self.mode = TaskMode(mode_str)
+            except ValueError:
+                logger.warning(f"无效的模式值: {mode_str}，使用默认值 {TaskMode.STANDARD.value}")
+                self.mode = TaskMode.STANDARD
+        elif isinstance(mode_str, TaskMode):
+            self.mode = mode_str
+        else:
+            self.mode = TaskMode.STANDARD
+        self.interaction_note_count = kwargs.get('interaction_note_count', 3)
+        self.interaction_note_count = max(1, min(5, int(self.interaction_note_count))) if self.interaction_note_count else 3
         # 登录状态
         self.is_logged_in = False
         self.login_retry_count = 0
@@ -166,17 +183,24 @@ class XiaohongshuAgent(BaseAgent):
         """
         确保MCP连接已建立
 
-        如果未连接，则建立连接；如果已连接，则跳过。
+        如果未连接，则建立连接；如果已连接，则检查连接是否仍然有效。
 
         Raises:
             ConnectionError: 连接失败时抛出
         """
-        if not self.is_connected:
+        # 检查连接状态：不仅要检查 is_connected 标志，还要检查实际的 session 是否存在
+        if not self.is_connected or not self.mcp_client.session:
             try:
+                # 如果之前有连接但 session 丢失了，重置状态
+                if self.is_connected and not self.mcp_client.session:
+                    logger.warning("MCP连接状态不一致，重新建立连接")
+                    self.is_connected = False
+                
                 await self.mcp_client.connect()
                 self.is_connected = True
                 logger.info("MCP连接已建立")
             except Exception as e:
+                self.is_connected = False
                 raise ConnectionError(f"建立MCP连接失败: {e}")
 
     async def ensure_logged_in(self) -> bool:
@@ -298,11 +322,22 @@ class XiaohongshuAgent(BaseAgent):
         Raises:
             RuntimeError: 发布失败时抛出
         """
+        # 将相对路径转换为绝对路径，确保 MCP 服务（可能在不同工作目录运行）能找到图片
+        absolute_images = []
+        for image_path in images:
+            # 如果是 HTTP/HTTPS 链接，直接使用
+            if image_path.startswith(('http://', 'https://')):
+                absolute_images.append(image_path)
+            else:
+                # 将相对路径转换为绝对路径
+                abs_path = os.path.abspath(image_path)
+                absolute_images.append(abs_path)
+                logger.debug(f"图片路径转换: {image_path} -> {abs_path}")
 
         arguments = {
             "title": title,
             "content": content,
-            "images": images,
+            "images": absolute_images,
         }
         if tags:
             arguments["tags"] = tags
@@ -425,7 +460,7 @@ class XiaohongshuAgent(BaseAgent):
         Args:
             title: 标题（不超过20个中文字符）
             content: 正文内容（不超过1000字）
-            video: 本地视频文件绝对路径
+            video: 本地视频文件路径（相对路径或绝对路径）
             tags: 话题标签列表，可选
 
         Returns:
@@ -434,6 +469,12 @@ class XiaohongshuAgent(BaseAgent):
         Raises:
             RuntimeError: 发布失败时抛出
         """
+        # 将相对路径转换为绝对路径，确保 MCP 服务（可能在不同工作目录运行）能找到视频
+        if not video.startswith(('http://', 'https://')):
+            # 如果是本地路径，转换为绝对路径
+            absolute_video = os.path.abspath(video)
+            logger.debug(f"视频路径转换: {video} -> {absolute_video}")
+            video = absolute_video
 
         arguments = {
             "title": title,
@@ -802,6 +843,171 @@ class XiaohongshuAgent(BaseAgent):
 
 
 
+    async def interact_with_topic_notes(
+        self,
+        topic: str,
+        interaction_count: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        搜索主题相关的笔记并进行互动（点赞、收藏、评论）
+        
+        Args:
+            topic: 主题关键词（必填）
+            interaction_count: 互动笔记数量，默认使用 self.interaction_note_count
+            
+        Returns:
+            互动结果统计
+        """
+        if not topic:
+            logger.warning("主题关键词为空，跳过主题笔记互动")
+            return {"success": False, "message": "主题关键词为空", "interacted_count": 0}
+        
+        interaction_count = interaction_count or self.interaction_note_count
+        interaction_count = max(1, min(5, interaction_count))
+        
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"开始搜索主题相关笔记进行互动: 主题={topic}, 数量={interaction_count}"
+        )
+        
+        try:
+            # 1. 搜索主题相关笔记
+            search_results = await self.search_feeds(keyword=topic, limit=interaction_count)
+            
+            if not search_results:
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).warning(
+                    f"未搜索到主题相关的笔记: {topic}"
+                )
+                return {"success": False, "message": "未搜索到相关笔记", "interacted_count": 0}
+            
+            # 2. 解析搜索结果，获取笔记详情
+            interacted_count = 0
+            for i, result in enumerate(search_results):
+                try:
+                    if result.get('type') != 'text':
+                        continue
+                    
+                    # 解析搜索结果（假设返回的是JSON字符串）
+                    content = result.get('content', '')
+                    try:
+                        feeds_data = json.loads(content) if isinstance(content, str) else content
+                        feeds = feeds_data.get('feeds', [])
+                    except (json.JSONDecodeError, AttributeError):
+                        logger.warning(f"无法解析搜索结果: {content[:100]}")
+                        continue
+                    
+                    if not feeds:
+                        continue
+                    
+                    # 对每条笔记进行互动
+                    for feed in feeds[:interaction_count - interacted_count]:
+                        if interacted_count >= interaction_count:
+                            break
+                        
+                        try:
+                            feed_id = feed.get('id')
+                            xsec_token = feed.get('xsecToken')
+                            
+                            if not feed_id or not xsec_token:
+                                logger.warning(f"笔记缺少必要字段: id={feed_id}, xsecToken={xsec_token}")
+                                continue
+                            
+                            # 获取笔记详情（用于生成评论）
+                            feed_detail = await self.get_feed_detail(feed_id=feed_id, xsec_token=xsec_token)
+                            note_content = ""
+                            comments = []
+                            
+                            try:
+                                detail_message = feed_detail.get('message', '')
+                                # 检查detail_message是否有效
+                                if detail_message and isinstance(detail_message, str) and detail_message.strip():
+                                    try:
+                                        detail_data = json.loads(detail_message)
+                                    except json.JSONDecodeError:
+                                        # 如果已经是字典，直接使用
+                                        detail_data = detail_message if isinstance(detail_message, dict) else {}
+                                elif isinstance(detail_message, dict):
+                                    detail_data = detail_message
+                                else:
+                                    detail_data = {}
+                                
+                                if detail_data:
+                                    note_data = detail_data.get('data', {}).get('note', {})
+                                    note_content = note_data.get('desc', '')
+                                    comments_data = detail_data.get('data', {}).get('comments', {})
+                                    comments = comments_data.get('list', [])
+                            except Exception as e:
+                                logger.debug(f"解析笔记详情失败: {e}, feed_detail类型: {type(feed_detail)}, message类型: {type(feed_detail.get('message', ''))}")
+                            
+                            # 执行互动操作：点赞 → 收藏 → 评论
+                            # 点赞
+                            await asyncio.sleep(random.randint(2, 5))
+                            like_result = await self.like_feed(feed_id=feed_id, xsec_token=xsec_token, unlike=False)
+                            if like_result.get('success'):
+                                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                                    f"点赞笔记成功: feed_id={feed_id}"
+                                )
+                            
+                            # 收藏
+                            await asyncio.sleep(random.randint(2, 5))
+                            favorite_result = await self.favorite_feed(feed_id=feed_id, xsec_token=xsec_token, unfavorite=False)
+                            if favorite_result.get('success'):
+                                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                                    f"收藏笔记成功: feed_id={feed_id}"
+                                )
+                            
+                            # 评论（使用现有的generate_comment方法生成评论）
+                            if note_content:
+                                await asyncio.sleep(random.randint(3, 8))
+                                try:
+                                    comment_obj = await self.generate_comment(
+                                        note_content=note_content,
+                                        comments=comments,
+                                        tone="友好",
+                                        is_reply=False
+                                    )
+                                    comment_result = await self.post_comment(
+                                        feed_id=feed_id,
+                                        content=comment_obj.content,
+                                        xsec_token=xsec_token
+                                    )
+                                    if comment_result.get('success'):
+                                        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                                            f"评论笔记成功: feed_id={feed_id}, 评论={comment_obj.content[:50]}..."
+                                        )
+                                except Exception as e:
+                                    logger.warning(f"生成或发表评论失败: {e}")
+                            
+                            interacted_count += 1
+                            
+                            # 每条笔记之间随机间隔5-20秒
+                            if interacted_count < interaction_count:
+                                await asyncio.sleep(random.randint(5, 20))
+                        
+                        except Exception as e:
+                            logger.warning(f"互动笔记失败: {e}")
+                            continue
+                    
+                    if interacted_count >= interaction_count:
+                        break
+                
+                except Exception as e:
+                    logger.warning(f"处理搜索结果失败: {e}")
+                    continue
+            
+            logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                f"主题笔记互动完成: 成功互动 {interacted_count} 条笔记"
+            )
+            
+            return {
+                "success": True,
+                "message": f"成功互动 {interacted_count} 条笔记",
+                "interacted_count": interacted_count
+            }
+        
+        except Exception as e:
+            logger.error(f"主题笔记互动失败: {e}", exc_info=True)
+            return {"success": False, "message": str(e), "interacted_count": 0}
+
     async def get_n_last_notes_title(self, n=3):
         """
         根据user_id，从notes中获取历史最近n个笔记记录的title字段，并以list输出
@@ -860,15 +1066,108 @@ class XiaohongshuAgent(BaseAgent):
             logger.error(f"读取笔记文件失败: {e}")
             return []
 
+    async def comment_own_notes(self) -> None:
+        """
+        评论自己的历史笔记（抽取自原 run 方法）
+        """
+        previous_notes_title = await self.get_n_last_notes_title(self.comment_note_nums)
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"获取到的前{self.comment_note_nums}篇笔记标题: {previous_notes_title}"
+        )
+        
+        # 获取自己过去n篇笔记的内容和评论，并在评论区补充评论
+        for note_title in previous_notes_title:
+            try:
+                await asyncio.sleep(random.randint(5, 20))
+                notes_info = await self.get_own_notes(note_title)
+                # 获取评论信息
+                note_info = notes_info[0]
+                comments = note_info['data']['comments']['list']
+                note_content = note_info['data']['note']['desc']
+                note_id, xsecToken = note_info['data']['note']['noteId'], note_info['data']['note']['xsecToken']
+                logger.debug(f"获取到的id和token：{note_id}, {xsecToken}")
+                # 评论该笔记
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                    f"开始评论笔记: {note_title}"
+                )
+                new_comments_obj = await self.generate_comment(note_content=note_content, comments=comments)
+                new_comments = new_comments_obj.content
+
+                await self.post_comment(feed_id=note_id, content=new_comments, xsec_token=xsecToken)
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                    f"发表评论{new_comments[:50]}成功"
+                )
+            except Exception as e:
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).warning(
+                    f"评论历史笔记{note_title}失败：{e}"
+                )
+                continue
+
+    async def publish_new_note(self) -> None:
+        """
+        发布新笔记（抽取自原 run 方法）
+        """
+        # 获取历史笔记标题（用于避免重复），默认获取最近3个
+        previous_notes_title = await self.get_n_last_notes_title(3)
+        
+        # 根据知识库，发布一篇笔记
+        ## 获取知识库中的知识生成笔记内容
+        source_file_path = get_user_source_file_path(self.user_id)
+        with open(source_file_path, 'r') as f:
+            knowledge_text = f.read()
+        
+        res = await self.generate_xhs_content(
+            topic=self.user_topic,
+            style=self.user_style,
+            target_audience=self.user_target_audience,
+            max_tags=3,
+            knowledge=knowledge_text,
+            user_query=self.user_query,
+            previous_notes_title=previous_notes_title
+        )
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"生成的小红书内容: {res}"
+        )
+
+        ## 生成图片
+        generate_image_path = await create_poster(
+            data=res, 
+            task_id=self.task_id, 
+            output_dir=get_user_images_path(self.user_id)
+        )
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"根据生成内容生成小红书海报图片：{generate_image_path}"
+        )
+
+        ## 发表内容
+        await self.publish_content(
+            title=res.get('title'),
+            content=res.get('content'),
+            tags=res.get('tags'),
+            images=[generate_image_path]
+        )
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"小红书笔记发布完成"
+        )
+
+        ## 保存笔记的title
+        notes_file_path = get_user_notes_file_path(self.user_id)
+        with open(notes_file_path, 'a') as f:
+            res['create_time'] = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
+            res['task_id'] = self.task_id
+            f.write(json.dumps(res, ensure_ascii=False) + '\n')
+        logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+            f"账号{self.user_id}, 任务{self.task_id}完成记录"
+        )
+
     async def run(self) -> Any:
         """
-        小红书智能体主执行逻辑
+        小红书智能体主执行逻辑（支持模式切换）
 
-        实现BaseAgent的抽象方法，定义智能体的主要行为：
-        1. 建立MCP连接
-        2. 确保登录状态
-        3. 根据上下文中的任务执行相应操作
-        4. 返回执行结果
+        实现BaseAgent的抽象方法，根据任务模式执行不同的操作：
+        - 标准模式：互动主题笔记 → 评论自己的历史笔记 → 发布新笔记
+        - 互动模式：互动主题笔记 → 评论自己的历史笔记
+        - 发布模式：发布新笔记
 
         Returns:
             执行结果，类型取决于具体任务
@@ -887,70 +1186,55 @@ class XiaohongshuAgent(BaseAgent):
             # if not logged_in:
             #     return {"success": False, "message": "小红书登录失败"}
 
-            # TO DO: 构建基于LLM的自动运维流程
-            # 按照固定模式完成小红书运维任务
-            # 检查用户信息，获取用户主页信息
-
-            previous_notes_title = await self.get_n_last_notes_title(3)
-
-            # 获取自己过去n篇笔记的内容和评论，并在评论区补充评论
-            for note_title in previous_notes_title:
-                try:
-                    await asyncio.sleep(random.randint(5,20))
-                    notes_info = await self.get_own_notes(note_title)
-                    # 获取评论信息
-                    note_info = notes_info[0]
-                    comments = note_info['data']['comments']['list']
-                    note_content = note_info['data']['note']['desc']
-                    note_id, xsecToken = note_info['data']['note']['noteId'], note_info['data']['note']['xsecToken']
-                    logger.debug(f"获取到的id和token：{note_id}, {xsecToken}")
-                    # 评论该笔记
-                    new_comments_obj = await self.generate_comment(note_content=note_content, comments=comments)
-                    new_comments = new_comments_obj.content
-
-                    await self.post_comment(feed_id=note_id, content=new_comments, xsec_token=xsecToken)
-                    logger.info(f"发表评论{new_comments[:50]}成功")
-                except Exception as e:
-                    logger.warning(f"评论历史笔记{note_title}失败：{e}")
-                    continue
-
-            # 根据知识库，发布一篇笔记
-            ## 获取知识库中的知识生成笔记内容
-            source_file_path = get_user_source_file_path(self.user_id)
-            with open(source_file_path, 'r') as f:
-                knowledge_text = f.read()
-            res = await self.generate_xhs_content(
-                topic=self.user_topic,
-                style=self.user_style,
-                target_audience=self.user_target_audience,
-                max_tags=3,
-                knowledge=knowledge_text,
-                user_query=self.user_query,
-                previous_notes_title=previous_notes_title
-            )
-            logger.info(f"生成的小红书内容: {res}")
-
-            ## 生成图片
-            generate_image_path = await create_poster(data=res, task_id=self.task_id, output_dir=get_user_images_path(self.user_id))
-            logger.info(f"根据生成内容生成小红书海报图片：{generate_image_path}")
-
-            ## 发表内容
-            await self.publish_content(
-                title=res.get('title'),
-                content=res.get('content'),
-                tags=res.get('tags'),
-                images=[generate_image_path]
-            )
-            logger.info(f"小红书笔记发布完成")
-
-            ## 保存笔记的title
-            notes_file_path = get_user_notes_file_path(self.user_id)
-            with open(notes_file_path, 'a') as f:
-                res['create_time'] = datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S')
-                res['task_id'] = self.task_id
-                f.write(json.dumps(res, ensure_ascii=False)+'\n')
-            logger.info(f"账号{self.user_id}, 任务{self.task_id}完成记录")
-
+            # 3. 根据模式执行不同逻辑
+            from app.data.constants import TaskMode
+            
+            if self.mode == TaskMode.STANDARD:
+                # 标准模式：互动 + 发布
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                    "执行标准模式：互动主题笔记 → 评论历史笔记 → 发布新笔记"
+                )
+                
+                # 1. 搜索主题相关笔记并互动
+                if self.user_topic:
+                    await self.interact_with_topic_notes(self.user_topic)
+                else:
+                    logger.warning("任务主题为空，跳过主题笔记互动")
+                
+                # 2. 评论自己的历史笔记
+                await self.comment_own_notes()
+                
+                # 3. 发布新笔记
+                await self.publish_new_note()
+                
+            elif self.mode == TaskMode.INTERACTION:
+                # 互动模式：仅互动
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                    "执行互动模式：互动主题笔记 → 评论历史笔记"
+                )
+                
+                # 1. 搜索主题相关笔记并互动
+                if self.user_topic:
+                    await self.interact_with_topic_notes(self.user_topic)
+                else:
+                    logger.warning("任务主题为空，跳过主题笔记互动")
+                
+                # 2. 评论自己的历史笔记
+                await self.comment_own_notes()
+                
+            elif self.mode == TaskMode.PUBLISH:
+                # 发布模式：仅发布
+                logger.bind(task_id=self.task_id, bindtype=LogBindType.TASK_LOG).info(
+                    "执行发布模式：发布新笔记"
+                )
+                
+                # 1. 发布新笔记
+                await self.publish_new_note()
+                
+            else:
+                logger.warning(f"未知的任务模式: {self.mode}，使用标准模式")
+                await self.comment_own_notes()
+                await self.publish_new_note()
 
             logger.info("小红书智能体执行完成")
             return {"success": True, "message": "小红书智能体执行成功"}

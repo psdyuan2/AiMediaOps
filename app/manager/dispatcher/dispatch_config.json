@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "saved_at": "2026-01-18T13:40:06.330658",
+  "tasks": [
+    {
+      "task_id": "f182ca0f-d05f-41b3-b223-b211935c31d7",
+      "account_id": "94267098699",
+      "account_name": "花语堂",
+      "task_type": "xhs_type",
+      "status": "pending",
+      "mode": "interaction",
+      "interaction_note_count": 3,
+      "interval": 1800,
+      "valid_time_range": null,
+      "task_end_time": "2026-02-09",
+      "last_execution_time": "2026-01-18T13:27:20.468461",
+      "next_execution_time": "2026-01-18T13:57:20.468461",
+      "created_at": "2026-01-10T15:13:57.506011",
+      "updated_at": "2026-01-18T13:27:20.468523",
+      "round_num": 16,
+      "kwargs": {
+        "task_type": "xhs_type",
+        "xhs_account_id": "94267098699",
+        "xhs_account_name": "花语堂",
+        "user_query": "测试更新",
+        "user_topic": "文玩手串",
+        "user_style": "专业可爱",
+        "user_target_audience": "年轻人",
+        "task_end_time": "2026-02-09",
+        "interval": 1800,
+        "valid_time_range": [
+          8,
+          23
+        ],
+        "task_id": "f182ca0f-d05f-41b3-b223-b211935c31d7",
+        "mode": "interaction"
+      },
+      "sys_type": "mac_intel"
+    },
+    {
+      "task_id": "59af3290-ef07-4c5a-9b98-6b6c95f8c61b",
+      "account_id": "18034965108",
+      "account_name": "面包老师",
+      "task_type": "xhs_type",
+      "status": "running",
+      "mode": "interaction",
+      "interaction_note_count": 3,
+      "interval": 1800,
+      "valid_time_range": null,
+      "task_end_time": "2026-02-10",
+      "last_execution_time": "2026-01-18T13:15:00.793372",
+      "next_execution_time": "2026-01-18T13:45:00.793372",
+      "created_at": "2026-01-13T00:16:00.781674",
+      "updated_at": "2026-01-18T13:32:39.595255",
+      "round_num": 14,
+      "kwargs": {
+        "task_type": "xhs_type",
+        "xhs_account_id": "18034965108",
+        "xhs_account_name": "面包老师",
+        "user_query": "发布一些科技相关的咨讯",
+        "user_topic": "科技",
+        "user_style": "专业可爱",
+        "user_target_audience": "年轻人，极客",
+        "task_end_time": "2026-02-10",
+        "interval": 1800,
+        "valid_time_range": [
+          0,
+          23
+        ],
+        "task_id": "59af3290-ef07-4c5a-9b98-6b6c95f8c61b",
+        "mode": "interaction"
+      },
+      "sys_type": "mac_intel"
+    }
+  ],
+  "account_tasks": {
+    "94267098699": [
+      "f182ca0f-d05f-41b3-b223-b211935c31d7"
+    ],
+    "18034965108": [
+      "59af3290-ef07-4c5a-9b98-6b6c95f8c61b"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 
 from typing import Any, Dict, List, Optional, Union
@@ -11,10 +12,12 @@ from app.core.logger import logger
 try:
     from mcp import ClientSession
     from mcp.client.streamable_http import streamablehttp_client
+    import httpx
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
     logger.warning("mcp库未安装，XiaohongshuAgent功能受限")
+    httpx = None
 
 
 class MCPClient:
@@ -53,16 +56,35 @@ class MCPClient:
 
         try:
             # 1. 创建传输层上下文管理器
-            self._transport_context = streamablehttp_client(self.server_url)
+            # 增加超时时间：timeout=60秒（连接超时），sse_read_timeout=600秒（读取超时）
+            # 使用自定义的 httpx 客户端工厂，设置 limits 和 trust_env=False 以解决连接问题
+            def create_http_client(**kwargs):
+                """创建自定义的 httpx 客户端，解决本地连接问题"""
+                kwargs.setdefault('limits', httpx.Limits(max_connections=10, max_keepalive_connections=5))
+                kwargs.setdefault('trust_env', False)
+                return httpx.AsyncClient(**kwargs)
+            
+            logger.debug(f"正在创建MCP传输层连接: {self.server_url}")
+            self._transport_context = streamablehttp_client(
+                self.server_url,
+                timeout=60.0,
+                sse_read_timeout=600.0,
+                httpx_client_factory=create_http_client
+            )
 
             # 2. 进入传输层上下文，获取流
+            logger.debug("正在进入传输层上下文...")
             self._transport = await self._transport_context.__aenter__()
             read_stream, write_stream, get_session_id = self._transport
+            logger.debug("传输层上下文已建立")
 
             # 3. 创建MCP协议会话 (Client Session)
+            logger.debug("正在创建MCP协议会话...")
             self.session = await ClientSession(read_stream, write_stream).__aenter__()
+            logger.debug("MCP协议会话已创建")
 
             # 4. 执行握手协议 (Handshake) - 关键步骤！
+            logger.debug("正在执行MCP初始化握手...")
             init_result = await self.session.initialize()
             logger.info(f"MCP连接成功，服务器版本: {init_result.protocolVersion}")
 
@@ -78,8 +100,14 @@ class MCPClient:
             }
             logger.info(f"发现 {len(self.tools_info)} 个MCP工具")
 
+        except asyncio.CancelledError as e:
+            # 如果被取消，先清理资源，然后重新抛出
+            logger.error(f"MCP连接被取消: {e}")
+            await self._close_resources()
+            raise
         except Exception as e:
             # 清理资源
+            logger.error(f"连接MCP服务器失败: {e}", exc_info=True)
             await self._close_resources()
             raise ConnectionError(f"连接MCP服务器失败: {e}")
 
@@ -88,18 +116,29 @@ class MCPClient:
         try:
             # 1. 关闭MCP会话
             if self.session:
-                await self.session.__aexit__(None, None, None)
+                try:
+                    await self.session.__aexit__(None, None, None)
+                except asyncio.CancelledError:
+                    # 如果会话关闭被取消，记录日志但不影响
+                    logger.debug("MCP会话关闭被取消（可能是请求超时），忽略此错误")
                 self.session = None
 
             # 2. 关闭传输层上下文管理器
             if self._transport_context:
-                await self._transport_context.__aexit__(None, None, None)
+                try:
+                    await self._transport_context.__aexit__(None, None, None)
+                except asyncio.CancelledError:
+                    # 如果传输层关闭被取消，记录日志但不影响
+                    logger.debug("MCP传输层关闭被取消（可能是请求超时），忽略此错误")
                 self._transport_context = None
                 self._transport = None  # 三元组引用
 
-        except Exception:
-            # 忽略关闭过程中的错误
-            pass
+        except asyncio.CancelledError:
+            # 如果整个关闭过程被取消，记录日志但不影响
+            logger.debug("MCP资源关闭过程被取消（可能是请求超时），忽略此错误")
+        except Exception as e:
+            # 忽略关闭过程中的其他错误
+            logger.debug(f"关闭MCP资源时发生错误（可忽略）: {e}")
 
     async def close(self):
         """关闭MCP连接"""
@@ -135,11 +174,31 @@ class MCPClient:
             results = []
             if hasattr(result, 'content') and result.content:
                 for content in result.content:
-                    if hasattr(content, 'text'):
+                    # 检查是否是 ImageContent 类型（优先检查，因为 ImageContent 可能也有 text 属性）
+                    if hasattr(content, 'type') and getattr(content, 'type', None) == 'image':
+                        # ImageContent: data 字段是 base64 编码的字符串
+                        if hasattr(content, 'data'):
+                            data = content.data
+                            # ImageContent 的 data 已经是 base64 字符串，不需要再次编码
+                            results.append({"type": "binary", "content": data})
+                            logger.debug(f"处理 ImageContent，data 长度: {len(data) if data else 0}")
+                        else:
+                            logger.warning("ImageContent 缺少 data 字段")
+                    elif hasattr(content, 'text'):
+                        # TextContent
                         results.append({"type": "text", "content": content.text})
                     elif hasattr(content, 'data'):
-                        # 处理二进制数据（如图片）
-                        results.append({"type": "binary", "content": content.data})
+                        # 其他类型的二进制数据
+                        data = content.data
+                        if isinstance(data, bytes):
+                            # 如果是二进制数据，编码为 base64 字符串
+                            import base64
+                            data = base64.b64encode(data).decode('utf-8')
+                        results.append({"type": "binary", "content": data})
+                    else:
+                        # 未知类型，尝试转换为字符串
+                        logger.warning(f"未知的 content 类型: {type(content)}, 属性: {dir(content)}")
+                        results.append({"type": "text", "content": str(content)})
             return results
 
         except Exception as e:
@@ -178,17 +237,37 @@ class MCPClient:
         Returns:
             包含二维码信息的字典，包括base64编码的图片数据和超时时间
         """
+        # 确保已连接
+        if not self.session:
+            raise ValueError("MCP客户端未连接，请先调用connect()方法")
+        
         results = await self.call_tool("get_login_qrcode", {})
 
-        qrcode_info = {"base64_image": "", "timeout": 180, "message": ""}
+        qrcode_info = {"base64_image": "", "timeout": 180, "message": "", "qrcode_url": ""}
+        
+        # 调试日志：记录返回的结果
+        logger.debug(f"get_login_qrcode 返回结果数量: {len(results)}")
+        for i, result in enumerate(results):
+            logger.debug(f"结果 {i}: type={result.get('type')}, content长度={len(str(result.get('content', '')))}")
+        
         for result in results:
             if result["type"] == "text":
                 # 解析文本结果中的信息
                 text = result["content"]
                 qrcode_info["message"] = text
+                logger.debug(f"获取到文本消息: {text[:100]}...")  # 只记录前100个字符
             elif result["type"] == "binary":
                 # 二进制数据为base64编码的图片
-                qrcode_info["base64_image"] = result["content"]
+                base64_data = result["content"]
+                if base64_data:
+                    qrcode_info["base64_image"] = base64_data
+                    qrcode_info["qrcode_url"] = f"data:image/png;base64,{base64_data}"
+                    logger.debug(f"获取到二维码图片，base64长度: {len(base64_data)}")
+                else:
+                    logger.warning("二进制数据为空")
+
+        if not qrcode_info["base64_image"]:
+            logger.warning(f"未获取到二维码图片，返回结果: {results}")
 
         return qrcode_info
 

@@ -38,18 +38,15 @@ async def main():
         task_type=DEFAULT_TASK_TYPE.XHS_TYPE,
         xhs_account_id='94267098699',
         xhs_account_name='花语堂',
-        user_query='start',
-        user_topic='start',
-        user_style='start',
-        user_target_audience='start',
+        user_query='帮我运营小红书账号',
+        user_topic='文玩',
+        user_style='专业可爱',
+        user_target_audience='年轻人',
         interval=200,
         valid_time_rage=[8, 24],
         task_id=None
     )
-    await task_test.run()
-    time.sleep(100)
-    print("任务暂停")
-    task_test.task_pause()
+    await task_test.run_once()
 
 
 

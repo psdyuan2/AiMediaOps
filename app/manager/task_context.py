@@ -48,30 +48,49 @@ class Task_Manager_Context:
         self._data_dir = Path.joinpath(current_file_path.parent, "data/")
         self._file_path = os.path.join(self._data_dir, f"mate_{task_id}.json")
 
-        # 确保数据目录存在
-        # os.makedirs(self._data_dir, exist_ok=True)
-
-        # # 尝试从本地文件加载
-        # if os.path.exists(self._file_path):
-        #     self._local_load()
-        # else:
-        #     # 创建新的 meta 结构
-        #     self._create_new_meta(**kwargs)
+        # 维护数据：先检查本地文件是否存在
+        if os.path.exists(self._file_path):
+            # 文件存在，从本地加载（在 create_from_meta() 中会调用 _local_load）
+            # 这里只标记文件已存在，实际的加载在 create_from_meta() 中完成
+            pass
+        else:
+            # 文件不存在，确保目录存在（后续 create_new_meta 时会创建新文件）
+            os.makedirs(self._data_dir, exist_ok=True)
 
     def create_new_meta(self, **kwargs):
         """创建新的 meta 数据结构"""
+        # 如果文件已存在，不应该覆盖，应该加载现有数据
+        if os.path.exists(self._file_path):
+            logger.info(f"任务上下文文件已存在: {self._file_path}，加载已有数据而非创建新数据")
+            self._local_load()
+            return
+        
+        # 文件不存在，创建新的 meta 结构
         self.meta = {
             "task_id": self.task_id,
             "xhs_account_id": kwargs.get("xhs_account_id"),  # 任务账户ID
+            "xhs_account_name": kwargs.get("xhs_account_name"),  # 任务账户名称
+            "user_query": kwargs.get("user_query"),  # 用户查询内容
+            "user_topic": kwargs.get("user_topic"),  # 帖子主题
+            "user_style": kwargs.get("user_style"),  # 内容风格
+            "user_target_audience": kwargs.get("user_target_audience"),  # 目标受众
+            "task_type": kwargs.get("task_type"),  # 任务类型
             "frequent": kwargs.get("frequent", 8),  # 单日任务运行频率，默认8次
             "valid_time_rage": kwargs.get("valid_time_rage", [8, 22]),  # 任务运行时间段，默认8点到22点
+            "valid_time_range": kwargs.get("valid_time_range", [8, 22]),  # 任务运行时间段（新字段名）
+            "task_end_time": kwargs.get("task_end_time"),  # 任务结束时间
+            "interval": kwargs.get("interval"),  # 执行间隔
+            "mode": kwargs.get("mode", "standard"),  # 任务执行模式，默认为标准模式
+            "interaction_note_count": kwargs.get("interaction_note_count", 3),  # 互动笔记数量，默认3
+            "sys_type": kwargs.get("sys_type"),  # 保存系统类型，用于恢复任务时确定 MCP 二进制文件
             "operate_accounts": {
                 "xhs_accounts_info": kwargs.get("xhs_accounts_info", {})
             },
             "step": []  # 记录每一次任务执行时的参数
         }
 
-        # 保存到本地
+        # 确保目录存在后保存到本地
+        os.makedirs(self._data_dir, exist_ok=True)
         self._local_save()
 
     def create_from_meta(self):
@@ -108,7 +127,18 @@ class Task_Manager_Context:
 
             # 恢复数据
             self.meta = data.get("meta", {})
-            self.step_id = len(data.get("step"))
+            # 确保 step 不为 None
+            # step 应该在 meta 中，而不是在顶层
+            step_data = self.meta.get("step")
+            if step_data is None:
+                step_data = []
+                logger.warning(f"任务上下文文件中的 meta.step 为 None，初始化为空列表")
+                # 确保 meta 中有 step 字段
+                self.meta["step"] = step_data
+            self.step_id = data.get("step_id", 1)  # 从顶层获取 step_id，如果没有则默认为1
+            # 如果 step_id 为 0 或 None，但 step 列表不为空，则使用 step 列表长度
+            if (self.step_id == 0 or self.step_id is None) and isinstance(step_data, list) and len(step_data) > 0:
+                self.step_id = len(step_data)
 
             logger.info(f"✅ 任务上下文已加载: {self._file_path}, 当前步骤数：{self.step_id}")
         except Exception as e:
@@ -163,6 +193,26 @@ class Task_Manager_Context:
 
         # 自动保存到本地
         self._local_save()
+
+    def update_meta(self, **kwargs):
+        """
+        更新 meta 中的指定字段
+        
+        Args:
+            **kwargs: 要更新的字段，键名对应 meta 中的字段名
+        """
+        updated_fields = []
+        for key, value in kwargs.items():
+            if value is not None:  # 只更新非 None 的值
+                self.meta[key] = value
+                updated_fields.append(key)
+        
+        if updated_fields:
+            # 自动保存到本地
+            self._local_save()
+            logger.info(f"任务上下文已更新字段: {', '.join(updated_fields)}")
+        
+        return updated_fields
 
     def get(self, key: str, step_id: Optional[int] = None) -> Any:
         """

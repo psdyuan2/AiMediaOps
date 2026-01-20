@@ -6,7 +6,6 @@ langchain>=0.1.0
 langchain-openai>=0.1.0
 python-dotenv>=1.0.0
 tenacity>=8.4.0
-sqlite3>=3.11.0
 
 # 异步支持 - Async Support
 asyncio-py>=3.11.0
