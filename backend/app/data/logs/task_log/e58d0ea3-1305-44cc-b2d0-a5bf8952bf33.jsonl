@@ -1,0 +1,1 @@
+{"timestamp": "2026-01-24T20:44:21.986312+08:00", "level": "INFO", "module": "app.manager.task_manager", "function": "_init_agent", "message": "小红书智能体初始化成功: user_id=test_id, task_id=e58d0ea3-1305-44cc-b2d0-a5bf8952bf33", "task_id": "e58d0ea3-1305-44cc-b2d0-a5bf8952bf33", "bindtype": "task_log"}

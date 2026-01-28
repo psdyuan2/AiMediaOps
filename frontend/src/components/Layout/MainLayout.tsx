@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { HelpDialog } from '@/components/HelpDialog';
 import { LicenseActivateDialog } from '@/components/LicenseActivateDialog';
+import { StartupCard } from '@/components/StartupCard';
 import { Outlet } from 'react-router-dom';
 import { registerActivateDialog } from '@/services/api';
 import { useLicenseStore } from '@/store/licenseStore';
@@ -12,8 +13,9 @@ const { Content } = Layout;
 
 export const MainLayout: React.FC = () => {
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
-  const [licensePurchaseOpen, setLicensePurchaseOpen] = useState(false);
+  // const [licensePurchaseOpen, setLicensePurchaseOpen] = useState(false);
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [startupComplete, setStartupComplete] = useState(false);
   const { fetchLicenseStatus } = useLicenseStore();
 
   useEffect(() => {
@@ -35,25 +37,28 @@ export const MainLayout: React.FC = () => {
       fetchLicenseStatus();
     });
 
-    const handleShowLicensePurchase = () => {
-      setLicensePurchaseOpen(true);
-    };
+    // const handleShowLicensePurchase = () => {
+    //   setLicensePurchaseOpen(true);
+    // };
 
     const handleOpenActivateDialog = () => {
       setActivateDialogOpen(true);
       fetchLicenseStatus();
     };
 
-    window.addEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
+    // window.addEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
     window.addEventListener('openActivateDialog' as any, handleOpenActivateDialog as EventListener);
     return () => {
-      window.removeEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
+      // window.removeEventListener('showLicensePurchase' as any, handleShowLicensePurchase as EventListener);
       window.removeEventListener('openActivateDialog' as any, handleOpenActivateDialog as EventListener);
     };
   }, [fetchLicenseStatus]);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* 启动卡片 - 只在 Electron 环境中且未完成启动时显示 */}
+      {!startupComplete && <StartupCard onReady={() => setStartupComplete(true)} />}
+      
       <Header onShowHelp={() => setHelpDialogOpen(true)} />
       <Layout>
         <Sidebar />

@@ -25,16 +25,15 @@ export interface ActivateResponse {
 // 获取激活状态
 export const getLicenseStatus = async (): Promise<LicenseStatus> => {
   // GET /api/v1/license/status
-  const response = await api.get<LicenseStatus>('/license/status');
-  return response;
+  // 添加时间戳防止缓存
+  return api.get<LicenseStatus>(`/license/status?t=${Date.now()}`) as unknown as Promise<LicenseStatus>;
 };
 
 // 激活注册码
 export const activateLicense = async (licenseCode: string): Promise<ActivateResponse> => {
   // POST /api/v1/license/activate
-  const response = await api.post<ActivateResponse>('/license/activate', {
+  return api.post<ActivateResponse>('/license/activate', {
     license_code: licenseCode,
-  });
-  return response;
+  }) as unknown as Promise<ActivateResponse>;
 };
 
